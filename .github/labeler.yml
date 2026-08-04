@@ -1,0 +1,21 @@
+api:
+  - changed-files:
+      - any-glob-to-any-file: "api/**"
+conformance:
+  - changed-files:
+      - any-glob-to-any-file: "conformance/**"
+docs:
+  - changed-files:
+      - any-glob-to-any-file: "docs/**"
+go:
+  - changed-files:
+      - any-glob-to-any-file: "go/**"
+java:
+  - changed-files:
+      - any-glob-to-any-file: "java/**"
+scripts:
+  - changed-files:
+      - any-glob-to-any-file: "scripts/**"
+github:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
