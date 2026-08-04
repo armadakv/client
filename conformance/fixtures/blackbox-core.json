@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "scope": "blackbox-core-sdk",
+  "image": "ghcr.io/armadakv/armada:master",
+  "scenarios": {
+    "tableLifecycle": {
+      "table": "bb-table-lifecycle"
+    },
+    "putGet": {
+      "table": "bb-put-get",
+      "key": "alpha",
+      "value": "bravo"
+    },
+    "iteratePrefix": {
+      "table": "bb-iterate-prefix",
+      "seed": [
+        { "key": "pref/a", "value": "1" },
+        { "key": "pref/b", "value": "2" },
+        { "key": "other", "value": "3" }
+      ],
+      "prefix": "pref/",
+      "expectedKeys": ["pref/a", "pref/b"]
+    },
+    "deletePrefix": {
+      "table": "bb-delete-prefix",
+      "seed": [
+        { "key": "pref/a", "value": "1" },
+        { "key": "pref/b", "value": "2" },
+        { "key": "other", "value": "3" }
+      ],
+      "prefix": "pref/",
+      "expectedDeleted": 2,
+      "remainingKeys": ["other"]
+    },
+    "txnSuccess": {
+      "table": "bb-txn-success",
+      "seed": [
+        { "key": "lock", "value": "open" }
+      ],
+      "compare": { "key": "lock", "value": "open" },
+      "successPuts": [
+        { "key": "lock", "value": "held" },
+        { "key": "audit", "value": "committed" }
+      ],
+      "failurePuts": [
+        { "key": "audit", "value": "blocked" }
+      ],
+      "expectedSucceeded": true,
+      "expectedResponseCount": 2
+    },
+    "txnFailure": {
+      "table": "bb-txn-failure",
+      "seed": [
+        { "key": "lock", "value": "held" }
+      ],
+      "compare": { "key": "lock", "value": "open" },
+      "successPuts": [
+        { "key": "lock", "value": "claimed" }
+      ],
+      "failurePuts": [
+        { "key": "audit", "value": "blocked" }
+      ],
+      "expectedSucceeded": false,
+      "expectedResponseCount": 1
+    },
+    "memberList": {
+      "minMembers": 1
+    }
+  }
+}
