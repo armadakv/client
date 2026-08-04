@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+(
+  cd "${ROOT_DIR}/go"
+  GOWORK=off go test ./... -run '^TestCoreConformance$'
+)
+
+(
+  cd "${ROOT_DIR}/java"
+  ./gradlew :armada-java-core:test --tests 'io.armadakv.core.impl.CoreConformanceTest'
+)

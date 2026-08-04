@@ -1,0 +1,569 @@
+// Copyright JAMF Software, LLC
+
+package client
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"math/rand"
+	"time"
+
+	"github.com/armadakv/client/go/internal/proto"
+	"google.golang.org/grpc"
+)
+
+type (
+	KeyValue              armadapb.KeyValue
+	ResponseHeader        armadapb.ResponseHeader
+	ResponseOpRange       armadapb.ResponseOp_Range
+	ResponseOpPut         armadapb.ResponseOp_Put
+	ResponseOpDeleteRange armadapb.ResponseOp_DeleteRange
+)
+
+type GetResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// kvs is the list of key-value pairs matched by the range request.
+	// kvs is empty when count is requested.
+	Kvs []*KeyValue `json:"kvs,omitempty"`
+	// more indicates if there are more keys to return in the requested range.
+	More bool `json:"more,omitempty"`
+	// count is set to the number of keys within the range when requested.
+	Count int64 `json:"count,omitempty"`
+}
+
+type IteratorResponse func(yield func(response *GetResponse, err error) bool)
+
+func (resp *GetResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
+}
+
+type DeleteResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// deleted is the number of keys deleted by the delete range request.
+	Deleted int64 `json:"deleted,omitempty"`
+	// if prev_kv is set in the request, the previous key-value pairs will be returned.
+	PrevKvs []*KeyValue `json:"prev_kvs,omitempty"`
+}
+
+func (resp *DeleteResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
+}
+
+type PutResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// if prev_kv is set in the request, the previous key-value pair will be returned.
+	PrevKv *KeyValue `json:"prev_kv,omitempty"`
+}
+
+func (resp *PutResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
+}
+
+func NewResponseOp(any any) *ResponseOp {
+	switch r := any.(type) {
+	case *GetResponse:
+		return &ResponseOp{get: r}
+	case *PutResponse:
+		return &ResponseOp{put: r}
+	case *DeleteResponse:
+		return &ResponseOp{delete: r}
+	default:
+		panic(errors.New("unknown response op type"))
+	}
+}
+
+type ResponseOp struct {
+	get    *GetResponse
+	put    *PutResponse
+	delete *DeleteResponse
+}
+
+func (x *ResponseOp) IsGet() bool {
+	return x.get != nil
+}
+
+func (x *ResponseOp) Get() *GetResponse {
+	return x.get
+}
+
+func (x *ResponseOp) IsPut() bool {
+	return x.put != nil
+}
+
+func (x *ResponseOp) Put() *PutResponse {
+	return x.put
+}
+
+func (x *ResponseOp) IsDelete() bool {
+	return x.delete != nil
+}
+
+func (x *ResponseOp) Delete() *DeleteResponse {
+	return x.delete
+}
+
+type TxnResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// succeeded is set to true if the compare evaluated to true or false otherwise.
+	Succeeded bool `json:"succeeded,omitempty"`
+	// responses is a list of responses corresponding to the results from applying
+	// success if succeeded is true or failure if succeeded is false.
+	Responses []*ResponseOp `json:"responses,omitempty"`
+}
+
+func (resp *TxnResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
+}
+
+type Table interface {
+	// Put puts a key-value pair into Armada.
+	// Note that key,value can be plain bytes array and string is
+	// an immutable representation of that bytes array.
+	// To get a string of bytes, do string([]byte{0x10, 0x20}).
+	Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error)
+
+	// Get retrieves keys.
+	// By default, Get will return the value for "key", if any.
+	// When passed WithRange(end), Get will return the keys in the range [key, end).
+	// When passed WithFromKey(), Get returns keys greater than or equal to key.
+	// When passed WithRev(rev) with rev > 0, Get retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error)
+
+	// Iterate retrieves keys in iterator fashion, use this if you expect that the dataset returned will be larger than 4MiB.
+	// Iterator runs until exhaustion or until the callback func returns false.
+	// By default, Iterate will return the value for "key", if any.
+	// When passed WithRange(end), Iterate will return the keys in the range [key, end).
+	// When passed WithFromKey(), Iterate returns keys greater than or equal to key.
+	// When passed key "" and WithFromKey(), Iterate returns all keys.
+	// When passed WithRev(rev) with rev > 0, Iterate retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	Iterate(ctx context.Context, key string, opts ...OpOption) (IteratorResponse, error)
+
+	// Delete deletes a key, or optionally using WithRange(end), [key, end).
+	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
+
+	// Txn creates a transaction.
+	Txn(ctx context.Context) Txn
+}
+
+type KV interface {
+	// Put puts a key-value pair into Armada.
+	// Note that key,value can be plain bytes array and string is
+	// an immutable representation of that bytes array.
+	// To get a string of bytes, do string([]byte{0x10, 0x20}).
+	Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error)
+
+	// Get retrieves keys.
+	// By default, Get will return the value for "key", if any.
+	// When passed WithRange(end), Get will return the keys in the range [key, end).
+	// When passed WithFromKey(), Get returns keys greater than or equal to key.
+	// When passed key "" and WithFromKey(), Get returns all keys.
+	// When passed WithRev(rev) with rev > 0, Get retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	// Note that a single response is limited by a max size of ~4MiB. If more keys in the range exists the GetResponse.More will be set to true.
+	Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error)
+
+	// Iterate retrieves keys in iterator fashion, use this if you expect that the dataset returned will be larger than 4MiB.
+	// Iterator runs until exhaustion or until the callback func returns false.
+	// By default, Iterate will return the value for "key", if any.
+	// When passed WithRange(end), Iterate will return the keys in the range [key, end).
+	// When passed WithFromKey(), Iterate returns keys greater than or equal to key.
+	// When passed key "" and WithFromKey(), Iterate returns all keys.
+	// When passed WithRev(rev) with rev > 0, Iterate retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	Iterate(ctx context.Context, table, key string, opts ...OpOption) (IteratorResponse, error)
+
+	// Delete deletes a key, or optionally using WithRange(end), [key, end).
+	Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error)
+
+	// Do apply a single Op on KV without a transaction.
+	// Do is useful when creating arbitrary operations to be issued at a
+	// later time; the user can range over the operations, calling Do to
+	// execute them. Get/Put/Delete, on the other hand, are best suited
+	// for when the operation should be issued at the time of declaration.
+	Do(ctx context.Context, table string, op Op) (OpResponse, error)
+
+	// Table is a convenience function that provides requests scoped to a single table.
+	Table(name string) Table
+
+	// Txn creates a transaction.
+	Txn(ctx context.Context, table string) Txn
+}
+
+type OpResponse struct {
+	put  *PutResponse
+	get  *GetResponse
+	del  *DeleteResponse
+	txn  *TxnResponse
+	iter IteratorResponse
+}
+
+func (op OpResponse) Put() *PutResponse         { return op.put }
+func (op OpResponse) Get() *GetResponse         { return op.get }
+func (op OpResponse) Iterate() IteratorResponse { return op.iter }
+func (op OpResponse) Del() *DeleteResponse      { return op.del }
+func (op OpResponse) Txn() *TxnResponse         { return op.txn }
+
+func (resp *PutResponse) OpResponse() OpResponse {
+	return OpResponse{put: resp}
+}
+
+func (resp *GetResponse) OpResponse() OpResponse {
+	return OpResponse{get: resp}
+}
+
+func (resp *DeleteResponse) OpResponse() OpResponse {
+	return OpResponse{del: resp}
+}
+
+func (resp *TxnResponse) OpResponse() OpResponse {
+	return OpResponse{txn: resp}
+}
+
+func (resp IteratorResponse) OpResponse() OpResponse {
+	return OpResponse{iter: resp}
+}
+
+type hookedKV struct {
+	KV
+	hook HookKVOpDo
+}
+
+func (kv *hookedKV) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
+	return kv.hook.OnKVCall(ctx, table, op, kv.KV.Do)
+}
+
+func (kv *hookedKV) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
+	r, err := kv.Do(ctx, table, OpPut(key, val, opts...))
+	return r.put, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error) {
+	r, err := kv.Do(ctx, table, OpGet(key, opts...))
+	return r.get, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Iterate(ctx context.Context, table, key string, opts ...OpOption) (IteratorResponse, error) {
+	r, err := kv.Do(ctx, table, OpIterate(key, opts...))
+	return r.iter, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
+	r, err := kv.Do(ctx, table, OpDelete(key, opts...))
+	return r.del, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Txn(ctx context.Context, table string) Txn {
+	return &txn{
+		kv:    kv,
+		ctx:   ctx,
+		table: table,
+	}
+}
+
+func (kv *hookedKV) Table(name string) Table {
+	return &table{
+		kv:    kv,
+		table: name,
+	}
+}
+
+type kv struct {
+	remote   armadapb.KVClient
+	callOpts []grpc.CallOption
+}
+
+func newKV(c *Client) KV {
+	var k KV = &kv{remote: &retryKVClient{client: armadapb.NewKVClient(c.conn)}, callOpts: c.callOpts}
+	for _, h := range getHooks[HookKVOpDo](c.cfg.Hooks) {
+		k = &hookedKV{KV: k, hook: h}
+	}
+	return k
+}
+
+func (kv *kv) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
+	r, err := kv.Do(ctx, table, OpPut(key, val, opts...))
+	return r.put, toErr(ctx, err)
+}
+
+func (kv *kv) Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error) {
+	r, err := kv.Do(ctx, table, OpGet(key, opts...))
+	return r.get, toErr(ctx, err)
+}
+
+func (kv *kv) Iterate(ctx context.Context, table, key string, opts ...OpOption) (IteratorResponse, error) {
+	r, err := kv.Do(ctx, table, OpIterate(key, opts...))
+	return r.iter, toErr(ctx, err)
+}
+
+func (kv *kv) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
+	r, err := kv.Do(ctx, table, OpDelete(key, opts...))
+	return r.del, toErr(ctx, err)
+}
+
+func (kv *kv) Txn(ctx context.Context, table string) Txn {
+	return &txn{
+		kv:    kv,
+		ctx:   ctx,
+		table: table,
+	}
+}
+
+func (kv *kv) Table(name string) Table {
+	return &table{
+		kv:    kv,
+		table: name,
+	}
+}
+
+func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
+	var err error
+	switch op.t {
+	case tRange:
+		var resp *armadapb.RangeResponse
+		resp, err = kv.remote.Range(ctx, op.toRangeRequest(table), kv.callOpts...)
+		if err == nil {
+			return OpResponse{get: &GetResponse{
+				Header: (*ResponseHeader)(resp.Header),
+				Kvs:    convKeyValues(resp.Kvs),
+				More:   resp.More,
+				Count:  resp.Count,
+			}}, nil
+		}
+	case tIterateRange:
+		var resp armadapb.KV_IterateRangeClient
+		resp, err = kv.remote.IterateRange(ctx, op.toRangeRequest(table), kv.callOpts...)
+		if err == nil {
+			return OpResponse{iter: func(yield func(*GetResponse, error) bool) {
+				for {
+					r, err := resp.Recv()
+					if err != nil {
+						if errors.Is(err, io.EOF) {
+							break
+						}
+						if !yield(nil, err) {
+							break
+						}
+					} else {
+						if !yield(&GetResponse{
+							Header: (*ResponseHeader)(r.Header),
+							Kvs:    convKeyValues(r.Kvs),
+							More:   r.More,
+							Count:  r.Count,
+						}, nil) {
+							break
+						}
+					}
+				}
+			}}, nil
+		}
+	case tPut:
+		var resp *armadapb.PutResponse
+		r := &armadapb.PutRequest{Table: []byte(table), Key: op.key, Value: op.val, PrevKv: op.prevKV}
+		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
+		if err == nil {
+			return OpResponse{put: &PutResponse{
+				Header: (*ResponseHeader)(resp.Header),
+				PrevKv: (*KeyValue)(resp.PrevKv),
+			}}, nil
+		}
+	case tDeleteRange:
+		var resp *armadapb.DeleteRangeResponse
+		r := &armadapb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV, Count: op.count}
+		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
+		if err == nil {
+			return OpResponse{del: &DeleteResponse{
+				Header:  (*ResponseHeader)(resp.Header),
+				Deleted: resp.Deleted,
+				PrevKvs: convKeyValues(resp.PrevKvs),
+			}}, nil
+		}
+	case tTxn:
+		var resp *armadapb.TxnResponse
+		resp, err = kv.remote.Txn(ctx, op.toTxnRequest(table), kv.callOpts...)
+		if err == nil {
+			return OpResponse{txn: &TxnResponse{
+				Header:    (*ResponseHeader)(resp.Header),
+				Succeeded: resp.Succeeded,
+				Responses: convResponseOps(resp.Responses),
+			}}, nil
+		}
+	default:
+		panic("Unknown op")
+	}
+	return OpResponse{}, toErr(ctx, err)
+}
+
+func convResponseOps(in []*armadapb.ResponseOp) (out []*ResponseOp) {
+	for _, t := range in {
+		switch r := t.GetResponse().(type) {
+		case *armadapb.ResponseOp_ResponseRange:
+			out = append(out, NewResponseOp(&GetResponse{
+				Kvs:   convKeyValues(r.ResponseRange.GetKvs()),
+				More:  r.ResponseRange.GetMore(),
+				Count: r.ResponseRange.GetCount(),
+			}))
+		case *armadapb.ResponseOp_ResponsePut:
+			out = append(out, NewResponseOp(&PutResponse{
+				PrevKv: (*KeyValue)(r.ResponsePut.GetPrevKv()),
+			}))
+		case *armadapb.ResponseOp_ResponseDeleteRange:
+			out = append(out, NewResponseOp(&DeleteResponse{
+				Deleted: r.ResponseDeleteRange.GetDeleted(),
+				PrevKvs: convKeyValues(r.ResponseDeleteRange.GetPrevKvs()),
+			}))
+		}
+	}
+	return
+}
+
+func convKeyValues(in []*armadapb.KeyValue) (out []*KeyValue) {
+	for _, t := range in {
+		out = append(out, (*KeyValue)(t))
+	}
+	return
+}
+
+type table struct {
+	kv    KV
+	table string
+}
+
+func (t *table) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
+	r, err := t.kv.Do(ctx, t.table, OpPut(key, val, opts...))
+	return r.put, toErr(ctx, err)
+}
+
+func (t *table) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
+	r, err := t.kv.Do(ctx, t.table, OpGet(key, opts...))
+	return r.get, toErr(ctx, err)
+}
+
+func (t *table) Iterate(ctx context.Context, key string, opts ...OpOption) (IteratorResponse, error) {
+	r, err := t.kv.Do(ctx, t.table, OpIterate(key, opts...))
+	return r.iter, toErr(ctx, err)
+}
+
+func (t *table) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
+	r, err := t.kv.Do(ctx, t.table, OpDelete(key, opts...))
+	return r.del, toErr(ctx, err)
+}
+
+func (t *table) Txn(ctx context.Context) Txn {
+	return &txn{
+		kv:    t.kv,
+		ctx:   ctx,
+		table: t.table,
+	}
+}
+
+type retryKVClient struct {
+	client armadapb.KVClient
+}
+
+func (rkv *retryKVClient) Range(ctx context.Context, in *armadapb.RangeRequest, opts ...grpc.CallOption) (resp *armadapb.RangeResponse, err error) {
+	return rkv.client.Range(ctx, in, append(opts, withRepeatable())...)
+}
+
+func (rkv *retryKVClient) IterateRange(ctx context.Context, in *armadapb.RangeRequest, opts ...grpc.CallOption) (resp armadapb.KV_IterateRangeClient, err error) {
+	return rkv.client.IterateRange(ctx, in, append(opts, withRepeatable(), withMax(iterateRangeRetries))...)
+}
+
+func (rkv *retryKVClient) Put(ctx context.Context, in *armadapb.PutRequest, opts ...grpc.CallOption) (resp *armadapb.PutResponse, err error) {
+	return rkv.client.Put(ctx, in, opts...)
+}
+
+func (rkv *retryKVClient) DeleteRange(ctx context.Context, in *armadapb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *armadapb.DeleteRangeResponse, err error) {
+	return rkv.client.DeleteRange(ctx, in, opts...)
+}
+
+func (rkv *retryKVClient) Txn(ctx context.Context, in *armadapb.TxnRequest, opts ...grpc.CallOption) (resp *armadapb.TxnResponse, err error) {
+	return rkv.client.Txn(ctx, in, opts...)
+}
+
+type retryPolicy uint8
+
+const (
+	repeatable retryPolicy = iota
+	nonRepeatable
+)
+
+func (rp retryPolicy) String() string {
+	switch rp {
+	case repeatable:
+		return "repeatable"
+	case nonRepeatable:
+		return "nonRepeatable"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+type backoffFunc func(attempt uint) time.Duration
+
+type options struct {
+	retryPolicy retryPolicy
+	max         uint
+	backoffFunc backoffFunc
+	retryAuth   bool
+}
+
+var defaultOptions = &options{
+	retryPolicy: nonRepeatable,
+	max:         0, // disable
+	backoffFunc: backoffLinearWithJitter(50*time.Millisecond /*jitter*/, 0.10),
+	retryAuth:   true,
+}
+
+type retryOption struct {
+	grpc.EmptyCallOption
+	applyFunc func(opt *options)
+}
+
+// withRepeatable sets the retry policy of this call to repeatable.
+func withRepeatable() retryOption {
+	return retryOption{applyFunc: func(o *options) {
+		o.retryPolicy = repeatable
+	}}
+}
+
+// withMax sets the maximum number of retries on this call, or this interceptor.
+func withMax(maxRetries uint) retryOption {
+	return retryOption{applyFunc: func(o *options) {
+		o.max = maxRetries
+	}}
+}
+
+// WithBackoff sets the `BackoffFunc` used to control time between retries.
+func withBackoff(bf backoffFunc) retryOption {
+	return retryOption{applyFunc: func(o *options) {
+		o.backoffFunc = bf
+	}}
+}
+
+func backoffLinearWithJitter(waitBetween time.Duration, jitterFraction float64) backoffFunc {
+	return func(attempt uint) time.Duration {
+		return jitterUp(waitBetween, jitterFraction)
+	}
+}
+
+func jitterUp(duration time.Duration, jitter float64) time.Duration {
+	//nolint:gosec
+	multiplier := jitter * (rand.Float64()*2 - 1)
+	return time.Duration(float64(duration) * (1 + multiplier))
+}

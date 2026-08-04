@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "scope": "core-sdk",
+  "scenarios": {
+    "getDefault": {
+      "table": "conformance-core",
+      "key": "alpha",
+      "expectedRequest": {
+        "rangeEnd": "",
+        "limit": 0,
+        "linearizable": true,
+        "keysOnly": false,
+        "countOnly": false
+      },
+      "response": {
+        "header": {
+          "revision": 7
+        },
+        "kvs": [
+          {
+            "key": "alpha",
+            "value": "bravo"
+          }
+        ],
+        "count": 1
+      }
+    },
+    "getPrefixKeysOnly": {
+      "table": "conformance-core",
+      "key": "pref/",
+      "options": {
+        "prefix": true,
+        "serializable": true,
+        "keysOnly": true,
+        "limit": 2
+      },
+      "expectedRequest": {
+        "rangeEnd": "pref0",
+        "limit": 2,
+        "linearizable": false,
+        "keysOnly": true,
+        "countOnly": false
+      },
+      "response": {
+        "header": {
+          "revision": 8
+        },
+        "kvs": [],
+        "count": 2
+      }
+    },
+    "getCountOnlyRange": {
+      "table": "conformance-core",
+      "key": "alpha",
+      "options": {
+        "rangeEnd": "omega",
+        "countOnly": true
+      },
+      "expectedRequest": {
+        "rangeEnd": "omega",
+        "limit": 0,
+        "linearizable": true,
+        "keysOnly": false,
+        "countOnly": true
+      },
+      "response": {
+        "header": {
+          "revision": 8
+        },
+        "kvs": [],
+        "count": 3
+      }
+    },
+    "iteratePrefix": {
+      "table": "conformance-core",
+      "key": "pref/",
+      "options": {
+        "prefix": true,
+        "serializable": true,
+        "limit": 2
+      },
+      "expectedRequest": {
+        "rangeEnd": "pref0",
+        "limit": 2,
+        "linearizable": false,
+        "keysOnly": false,
+        "countOnly": false
+      },
+      "responseChunks": [
+        {
+          "header": {
+            "revision": 9
+          },
+          "kvs": [
+            {
+              "key": "pref/a",
+              "value": "1"
+            }
+          ],
+          "count": 1
+        },
+        {
+          "header": {
+            "revision": 9
+          },
+          "kvs": [
+            {
+              "key": "pref/b",
+              "value": "2"
+            }
+          ],
+          "count": 1
+        }
+      ]
+    },
+    "putPrevKV": {
+      "table": "conformance-core",
+      "key": "alpha",
+      "value": "charlie",
+      "options": {
+        "prevKV": true
+      },
+      "expectedRequest": {
+        "prevKV": true
+      },
+      "response": {
+        "header": {
+          "revision": 9
+        },
+        "prevKv": {
+          "key": "alpha",
+          "value": "before"
+        }
+      }
+    },
+    "deletePrefixPrevKV": {
+      "table": "conformance-core",
+      "key": "pref/",
+      "options": {
+        "prefix": true,
+        "prevKV": true
+      },
+      "expectedRequest": {
+        "rangeEnd": "pref0",
+        "prevKV": true
+      },
+      "response": {
+        "header": {
+          "revision": 10
+        },
+        "deleted": 1,
+        "prevKvs": [
+          {
+            "key": "pref/item",
+            "value": "stale"
+          }
+        ]
+      }
+    },
+    "deleteRange": {
+      "table": "conformance-core",
+      "key": "alpha",
+      "options": {
+        "rangeEnd": "delta"
+      },
+      "expectedRequest": {
+        "rangeEnd": "delta",
+        "prevKV": false
+      },
+      "response": {
+        "header": {
+          "revision": 11
+        },
+        "deleted": 2,
+        "prevKvs": []
+      }
+    },
+    "txnCompareAndOps": {
+      "table": "locks",
+      "compare": {
+        "key": "lock",
+        "value": "open",
+        "result": "EQUAL"
+      },
+      "success": [
+        {
+          "type": "put",
+          "key": "lock",
+          "value": "held",
+          "prevKV": true
+        },
+        {
+          "type": "delete",
+          "key": "stale",
+          "prevKV": true
+        }
+      ],
+      "failure": [
+        {
+          "type": "get",
+          "key": "lock"
+        }
+      ],
+      "response": {
+        "header": {
+          "revision": 11
+        },
+        "succeeded": true,
+        "responses": [
+          {
+            "type": "put",
+            "prevKv": {
+              "key": "lock",
+              "value": "open"
+            }
+          },
+          {
+            "type": "delete",
+            "deleted": 1,
+            "prevKvs": [
+              {
+                "key": "stale",
+                "value": "old"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "txnFailureOps": {
+      "table": "locks",
+      "compare": {
+        "key": "lock",
+        "value": "open",
+        "result": "EQUAL"
+      },
+      "success": [
+        {
+          "type": "put",
+          "key": "lock",
+          "value": "held",
+          "prevKV": true
+        }
+      ],
+      "failure": [
+        {
+          "type": "get",
+          "key": "lock"
+        },
+        {
+          "type": "delete",
+          "key": "queue",
+          "prevKV": true
+        }
+      ],
+      "response": {
+        "header": {
+          "revision": 12
+        },
+        "succeeded": false,
+        "responses": [
+          {
+            "type": "get"
+          },
+          {
+            "type": "delete",
+            "deleted": 1,
+            "prevKvs": [
+              {
+                "key": "queue",
+                "value": "stale"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "getUnavailableError": {
+      "table": "conformance-core",
+      "key": "alpha",
+      "code": "UNAVAILABLE"
+    },
+    "memberList": {
+      "cluster": "cluster-a",
+      "members": [
+        {
+          "id": "1",
+          "name": "armada-1",
+          "peerURLs": [
+            "http://peer-1:5012"
+          ],
+          "clientURLs": [
+            "http://client-1:8443"
+          ]
+        },
+        {
+          "id": "2",
+          "name": "armada-2",
+          "peerURLs": [
+            "http://peer-2:5012"
+          ],
+          "clientURLs": [
+            "http://client-2:8443"
+          ]
+        }
+      ]
+    }
+  }
+}
