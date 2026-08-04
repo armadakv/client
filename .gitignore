@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+*.iml
+
+dist/
+tmp/
+gen/
+coverage/
+
+conformance/reports/*.json
+conformance/reports/*.xml
+conformance/reports/*.txt
