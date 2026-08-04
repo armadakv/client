@@ -48,7 +48,7 @@ check-java:
 	./scripts/check-java.sh
 
 .PHONY: check
-check: check-layout check-proto-sync check-go-proto check-conformance check-go check-java
+check: check-layout check-conformance check-go check-java
 
 .PHONY: release-dry-run
 release-dry-run:

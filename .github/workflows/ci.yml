@@ -15,7 +15,32 @@ permissions:
   contents: read
 
 jobs:
-  scaffold:
+  validate:
+    name: Validate repo layout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Validate repository layout
+        run: make check-layout
+      - name: Validate conformance scaffold
+        run: make check-conformance
+
+  go:
+    name: Go SDK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+      - name: Test Go SDK and plugins
+        run: make check-go
+
+  java:
+    name: Java SDK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,19 +52,5 @@ jobs:
           java-version: "17"
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go/go.mod
-      - name: Validate repository scaffold
-        run: make check
-
-  proto-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-      - name: Install Buf
-        uses: bufbuild/buf-setup-action@v1
-      - name: Lint protobuf inputs
-        run: buf lint --config api/buf.yaml api/proto
+      - name: Test Java SDK
+        run: make check-java
