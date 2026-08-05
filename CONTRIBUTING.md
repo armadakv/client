@@ -5,6 +5,7 @@
 This repository owns shared Armada client concerns:
 
 - language SDKs,
+- current and future language SDK roots (`go/`, `java/`, `node/`, `python/`),
 - vendored protocol inputs from `armadakv/armada`,
 - conformance coverage shared across SDKs,
 - coordinated release metadata.
@@ -21,5 +22,6 @@ This repository owns shared Armada client concerns:
 ## Repository conventions
 
 - Keep language SDKs at the repository root (`go/`, `java/`, ...).
+- Treat `node/` and `python/` as reserved SDK roots for future client implementations.
 - Do not hand-edit synced protobuf files under `api/proto/`.
 - Keep release notes repo-wide even when only one language SDK changes.

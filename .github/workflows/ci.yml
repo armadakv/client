@@ -26,6 +26,15 @@ jobs:
       - name: Validate conformance scaffold
         run: make check-conformance
 
+  node:
+    name: Node SDK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Validate Node SDK scaffold
+        run: test -f node/README.md
+
   go:
     name: Go SDK
     runs-on: ubuntu-latest

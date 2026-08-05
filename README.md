@@ -8,7 +8,7 @@ The repository is currently scaffolded for:
 
 - shared release/version management,
 - synced protocol inputs from `armadakv/armada`,
-- root-level language SDK directories (`go/`, `java/`, and future siblings),
+- root-level language SDK directories (`go/`, `java/`, and future siblings like `node/` and `python/`),
 - shared conformance specifications and harnesses.
 
 The Go and JVM SDKs have both been migrated into this monorepo under `go/` and `java/`.
@@ -23,6 +23,8 @@ The Go and JVM SDKs have both been migrated into this monorepo under `go/` and `
 |-- examples/        # cross-language examples and snippets
 |-- go/              # migrated Go SDK module and plugin modules
 |-- java/            # migrated JVM SDK multi-module Gradle build
+|-- node/            # future Node.js SDK package/workspace
+|-- python/          # future Python SDK package/workspace
 `-- scripts/         # sync and validation helpers
 ```
 

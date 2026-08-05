@@ -15,6 +15,8 @@ required_paths=(
   "examples"
   "go"
   "java"
+  "node"
+  "python"
   "scripts"
 )
 
