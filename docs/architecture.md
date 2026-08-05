@@ -10,7 +10,7 @@
 ## Repository shape
 
 - `api/` holds the vendored protocol inputs and shared protocol validation config.
-- `go/` holds the migrated Go SDK plus its plugin modules; `java/` holds the migrated JVM multi-module build; `node/` and `python/` are reserved for future language SDKs.
+- `go/` holds the migrated Go SDK plus its plugin modules; `java/` holds the migrated JVM multi-module build; `node/` is reserved for a future language SDK; `python/` now contains the Python SDK scaffold.
 - `conformance/` holds language-agnostic specs, fixtures, harnesses, and reports.
 - `scripts/` holds repeatable sync and validation helpers used both locally and in CI.
 
