@@ -1,18 +1,24 @@
 # Armada Node.js SDK
 
-This directory is reserved for the future Armada Node.js SDK.
+This directory contains the Node.js SDK scaffold for Armada KV.
 
-Planned structure:
+The first cut is intentionally small:
 
-- `node/` as the package/workspace root
-- generated protobuf or gRPC bindings shared from `api/proto/`
-- a core SDK surface aligned with the Go and Java conformance fixtures
+- package root: `node/src`
+- core client entry point: `ArmadaClient`
+- core models: key/value, get/put/delete/txn results, table and cluster metadata
+- shared conformance fixture loader for `conformance/fixtures/core-sdk.json`
 
-The intended public surface should stay focused on the core client API:
+The SDK is intentionally focused on the core client surface only.
+Framework-specific or native integrations should stay separate.
 
-- table lifecycle
-- key/value operations
-- transactions
-- cluster membership
+## Layout
 
-Framework-specific or native integrations should stay out of the core SDK surface.
+```text
+node/
+|-- package.json
+`-- src/
+    |-- client.js
+    |-- index.js
+    `-- models.js
+```

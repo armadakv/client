@@ -1,0 +1,11 @@
+{
+  "name": "@armadakv/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Armada Node.js client SDK",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}
