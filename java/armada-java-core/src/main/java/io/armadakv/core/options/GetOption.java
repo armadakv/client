@@ -22,6 +22,10 @@ public final class GetOption {
     private final boolean keysOnly;
     private final boolean countOnly;
     private final boolean prefix;
+    private final long minModRevision;
+    private final long maxModRevision;
+    private final long minCreateRevision;
+    private final long maxCreateRevision;
     private final long timeout;
     private final TimeUnit timeoutUnit;
 
@@ -31,7 +35,12 @@ public final class GetOption {
             boolean serializable,
             boolean keysOnly,
             boolean countOnly,
-            boolean prefix, long timeout, TimeUnit timeoutUnit) {
+            boolean prefix,
+            long minModRevision,
+            long maxModRevision,
+            long minCreateRevision,
+            long maxCreateRevision,
+            long timeout, TimeUnit timeoutUnit) {
 
         this.endKey = endKey;
         this.limit = limit;
@@ -39,6 +48,10 @@ public final class GetOption {
         this.keysOnly = keysOnly;
         this.countOnly = countOnly;
         this.prefix = prefix;
+        this.minModRevision = minModRevision;
+        this.maxModRevision = maxModRevision;
+        this.minCreateRevision = minCreateRevision;
+        this.maxCreateRevision = maxCreateRevision;
         this.timeout = timeout;
         this.timeoutUnit = timeoutUnit;
     }
@@ -76,6 +89,42 @@ public final class GetOption {
         return prefix;
     }
 
+    /**
+     * Lower bound on the mod revision of the returned keys, inclusive; 0 means unbounded.
+     *
+     * @return the minimum mod revision.
+     */
+    public long getMinModRevision() {
+        return minModRevision;
+    }
+
+    /**
+     * Upper bound on the mod revision of the returned keys, inclusive; 0 means unbounded.
+     *
+     * @return the maximum mod revision.
+     */
+    public long getMaxModRevision() {
+        return maxModRevision;
+    }
+
+    /**
+     * Lower bound on the create revision of the returned keys, inclusive; 0 means unbounded.
+     *
+     * @return the minimum create revision.
+     */
+    public long getMinCreateRevision() {
+        return minCreateRevision;
+    }
+
+    /**
+     * Upper bound on the create revision of the returned keys, inclusive; 0 means unbounded.
+     *
+     * @return the maximum create revision.
+     */
+    public long getMaxCreateRevision() {
+        return maxCreateRevision;
+    }
+
     public long getTimeout() {
         return timeout;
     }
@@ -91,6 +140,10 @@ public final class GetOption {
         private boolean countOnly = false;
         private ByteSequence endKey;
         private boolean prefix = false;
+        private long minModRevision = 0L;
+        private long maxModRevision = 0L;
+        private long minCreateRevision = 0L;
+        private long maxCreateRevision = 0L;
         private long timeout = 30;
         private TimeUnit timeoutUnit = TimeUnit.SECONDS;
 
@@ -182,6 +235,58 @@ public final class GetOption {
         }
 
         /**
+         * Return only keys whose mod revision is at least the given revision, i.e. keys modified at or
+         * after it. Only live keys are filtered: a key deleted after the revision is not reported.
+         *
+         * <p>
+         * Together with the highest mod revision seen so far it lets a reader fetch only what changed
+         * since: {@code withMinModRevision(watermark + 1)}. 0, the default, means no lower bound.
+         *
+         * @param revision the minimum mod revision, inclusive
+         * @return builder
+         */
+        public Builder withMinModRevision(long revision) {
+            this.minModRevision = revision;
+            return this;
+        }
+
+        /**
+         * Return only keys whose mod revision is at most the given revision. 0, the default, means no
+         * upper bound.
+         *
+         * @param revision the maximum mod revision, inclusive
+         * @return builder
+         */
+        public Builder withMaxModRevision(long revision) {
+            this.maxModRevision = revision;
+            return this;
+        }
+
+        /**
+         * Return only keys whose create revision is at least the given revision, i.e. keys created at or
+         * after it. 0, the default, means no lower bound.
+         *
+         * @param revision the minimum create revision, inclusive
+         * @return builder
+         */
+        public Builder withMinCreateRevision(long revision) {
+            this.minCreateRevision = revision;
+            return this;
+        }
+
+        /**
+         * Return only keys whose create revision is at most the given revision. 0, the default, means no
+         * upper bound.
+         *
+         * @param revision the maximum create revision, inclusive
+         * @return builder
+         */
+        public Builder withMaxCreateRevision(long revision) {
+            this.maxCreateRevision = revision;
+            return this;
+        }
+
+        /**
          * Sets the operation timeout.
          *
          * @param amount timeout value.
@@ -207,6 +312,10 @@ public final class GetOption {
                     this.keysOnly,
                     this.countOnly,
                     this.prefix,
+                    this.minModRevision,
+                    this.maxModRevision,
+                    this.minCreateRevision,
+                    this.maxCreateRevision,
                     this.timeout,
                     this.timeoutUnit);
         }

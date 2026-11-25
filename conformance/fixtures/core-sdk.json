@@ -71,6 +71,41 @@
         "count": 3
       }
     },
+    "getRevisionFilters": {
+      "table": "conformance-core",
+      "key": "pref/",
+      "options": {
+        "prefix": true,
+        "serializable": true,
+        "minModRevision": 41,
+        "maxModRevision": 97,
+        "minCreateRevision": 5,
+        "maxCreateRevision": 90
+      },
+      "expectedRequest": {
+        "rangeEnd": "pref0",
+        "limit": 0,
+        "linearizable": false,
+        "keysOnly": false,
+        "countOnly": false,
+        "minModRevision": 41,
+        "maxModRevision": 97,
+        "minCreateRevision": 5,
+        "maxCreateRevision": 90
+      },
+      "response": {
+        "header": {
+          "revision": 97
+        },
+        "kvs": [
+          {
+            "key": "pref/a",
+            "value": "changed"
+          }
+        ],
+        "count": 1
+      }
+    },
     "iteratePrefix": {
       "table": "conformance-core",
       "key": "pref/",
@@ -107,6 +142,52 @@
             {
               "key": "pref/b",
               "value": "2"
+            }
+          ],
+          "count": 1
+        }
+      ]
+    },
+    "iterateRevisionFilters": {
+      "table": "conformance-core",
+      "key": "pref/",
+      "options": {
+        "prefix": true,
+        "serializable": true,
+        "minModRevision": 42
+      },
+      "expectedRequest": {
+        "rangeEnd": "pref0",
+        "limit": 0,
+        "linearizable": false,
+        "keysOnly": false,
+        "countOnly": false,
+        "minModRevision": 42,
+        "maxModRevision": 0,
+        "minCreateRevision": 0,
+        "maxCreateRevision": 0
+      },
+      "responseChunks": [
+        {
+          "header": {
+            "revision": 50
+          },
+          "kvs": [
+            {
+              "key": "pref/a",
+              "value": "1"
+            }
+          ],
+          "count": 1
+        },
+        {
+          "header": {
+            "revision": 50
+          },
+          "kvs": [
+            {
+              "key": "pref/c",
+              "value": "3"
             }
           ],
           "count": 1

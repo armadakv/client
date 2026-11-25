@@ -124,6 +124,44 @@ class CoreBlackboxConformanceTest {
     }
 
     @Test
+    void revisionFiltersScenario() {
+        var scenario = fixture.scenarios().revisionFilters();
+        createTable(scenario.table());
+        // The watermark is the revision of the last seed write: every seeded key was modified at or before it.
+        long watermark = 0;
+        for (BlackboxSeedKV kv : scenario.seed()) {
+            watermark = client.getKVClient().put(bytes(scenario.table()), bytes(kv.key()), bytes(kv.value())).header().getRevision();
+        }
+        assertThat(watermark).isPositive();
+        seedTable(scenario.table(), scenario.changes());
+
+        var expected = scenario.expected();
+        assertThat(prefixKeys(scenario, GetOption.builder().isPrefix(true).withMinModRevision(watermark + 1).build()))
+                .containsExactlyElementsOf(expected.minModRevisionAfterSeed());
+        assertThat(prefixKeys(scenario, GetOption.builder().isPrefix(true).withMaxModRevision(watermark).build()))
+                .containsExactlyElementsOf(expected.maxModRevisionAtSeed());
+        assertThat(prefixKeys(scenario, GetOption.builder().isPrefix(true).withMinCreateRevision(watermark + 1).build()))
+                .containsExactlyElementsOf(expected.minCreateRevisionAfterSeed());
+        assertThat(prefixKeys(scenario, GetOption.builder().isPrefix(true).withMaxCreateRevision(watermark).build()))
+                .containsExactlyElementsOf(expected.maxCreateRevisionAtSeed());
+
+        List<String> iterated = client.getKVClient()
+                .iterate(bytes(scenario.table()), bytes(scenario.prefix()), GetOption.builder().isPrefix(true).withMinModRevision(watermark + 1).build())
+                .flatMap(response -> response.kvs().stream())
+                .map(kv -> kv.key().toString())
+                .toList();
+        assertThat(iterated).containsExactlyElementsOf(expected.minModRevisionAfterSeed());
+    }
+
+    private List<String> prefixKeys(BlackboxRevisionFilters scenario, GetOption option) {
+        return client.getKVClient()
+                .get(bytes(scenario.table()), bytes(scenario.prefix()), option)
+                .kvs().stream()
+                .map(kv -> kv.key().toString())
+                .toList();
+    }
+
+    @Test
     void deletePrefixScenario() {
         var scenario = fixture.scenarios().deletePrefix();
         createTable(scenario.table());
@@ -240,6 +278,7 @@ class CoreBlackboxConformanceTest {
             BlackboxTableLifecycle tableLifecycle,
             BlackboxPutGet putGet,
             BlackboxIteratePrefix iteratePrefix,
+            BlackboxRevisionFilters revisionFilters,
             BlackboxDeletePrefix deletePrefix,
             BlackboxTxnScenario txnSuccess,
             BlackboxTxnScenario txnFailure,
@@ -257,6 +296,14 @@ class CoreBlackboxConformanceTest {
     }
 
     record BlackboxIteratePrefix(String table, List<BlackboxSeedKV> seed, String prefix, List<String> expectedKeys) {
+    }
+
+    record BlackboxRevisionFilters(String table, List<BlackboxSeedKV> seed, List<BlackboxSeedKV> changes, String prefix,
+                                   BlackboxRevisionFiltersExpected expected) {
+    }
+
+    record BlackboxRevisionFiltersExpected(List<String> minModRevisionAfterSeed, List<String> maxModRevisionAtSeed,
+                                           List<String> minCreateRevisionAfterSeed, List<String> maxCreateRevisionAtSeed) {
     }
 
     record BlackboxDeletePrefix(String table, List<BlackboxSeedKV> seed, String prefix, long expectedDeleted,
