@@ -29,6 +29,7 @@ type blackboxScenarios struct {
 	TableLifecycle blackboxTableLifecycle `json:"tableLifecycle"`
 	PutGet         blackboxPutGet         `json:"putGet"`
 	IteratePrefix  blackboxIteratePrefix  `json:"iteratePrefix"`
+	RevFilters     blackboxRevFilters     `json:"revisionFilters"`
 	DeletePrefix   blackboxDeletePrefix   `json:"deletePrefix"`
 	TxnSuccess     blackboxTxnScenario    `json:"txnSuccess"`
 	TxnFailure     blackboxTxnScenario    `json:"txnFailure"`
@@ -55,6 +56,22 @@ type blackboxIteratePrefix struct {
 	Seed         []blackboxSeedKV `json:"seed"`
 	Prefix       string           `json:"prefix"`
 	ExpectedKeys []string         `json:"expectedKeys"`
+}
+
+// blackboxRevFilters seeds keys, takes the highest mod revision among them as
+// the watermark, applies changes, and expects each revision filter, relative to
+// the watermark, to return the listed keys under prefix.
+type blackboxRevFilters struct {
+	Table    string           `json:"table"`
+	Seed     []blackboxSeedKV `json:"seed"`
+	Changes  []blackboxSeedKV `json:"changes"`
+	Prefix   string           `json:"prefix"`
+	Expected struct {
+		MinModRevisionAfterSeed    []string `json:"minModRevisionAfterSeed"`
+		MaxModRevisionAtSeed       []string `json:"maxModRevisionAtSeed"`
+		MinCreateRevisionAfterSeed []string `json:"minCreateRevisionAfterSeed"`
+		MaxCreateRevisionAtSeed    []string `json:"maxCreateRevisionAtSeed"`
+	} `json:"expected"`
 }
 
 type blackboxDeletePrefix struct {
@@ -191,6 +208,71 @@ func TestCoreBlackboxConformance(t *testing.T) {
 		slices.Sort(expected)
 		if !slices.Equal(keys, expected) {
 			t.Fatalf("unexpected iterate keys: got %v want %v", keys, expected)
+		}
+	})
+
+	t.Run("revision filters", func(t *testing.T) {
+		scenario := fixture.Scenarios.RevFilters
+		mustCreateTable(t, ctx, client, scenario.Table)
+		table := client.Table(scenario.Table)
+		seedGoTable(t, ctx, table, scenario.Seed)
+
+		seeded, err := table.Get(ctx, "", WithFromKey())
+		if err != nil {
+			t.Fatalf("get seeded keys failed: %v", err)
+		}
+		var watermark int64
+		for _, kv := range seeded.Kvs {
+			watermark = max(watermark, kv.ModRevision)
+		}
+		if watermark == 0 {
+			t.Fatalf("seeded keys carry no mod revision: %+v", seeded)
+		}
+		seedGoTable(t, ctx, table, scenario.Changes)
+
+		keysWith := func(name string, opt OpOption) []string {
+			t.Helper()
+			resp, err := table.Get(ctx, scenario.Prefix, WithPrefix(), opt)
+			if err != nil {
+				t.Fatalf("%s: get failed: %v", name, err)
+			}
+			var keys []string
+			for _, kv := range resp.Kvs {
+				keys = append(keys, string(kv.Key))
+			}
+			return keys
+		}
+		for _, c := range []struct {
+			name string
+			opt  OpOption
+			want []string
+		}{
+			{"min mod revision after seed", WithMinModRev(watermark + 1), scenario.Expected.MinModRevisionAfterSeed},
+			{"max mod revision at seed", WithMaxModRev(watermark), scenario.Expected.MaxModRevisionAtSeed},
+			{"min create revision after seed", WithMinCreateRev(watermark + 1), scenario.Expected.MinCreateRevisionAfterSeed},
+			{"max create revision at seed", WithMaxCreateRev(watermark), scenario.Expected.MaxCreateRevisionAtSeed},
+		} {
+			if got := keysWith(c.name, c.opt); !slices.Equal(got, c.want) {
+				t.Fatalf("%s: got keys %v, want %v", c.name, got, c.want)
+			}
+		}
+
+		iter, err := table.Iterate(ctx, scenario.Prefix, WithPrefix(), WithMinModRev(watermark+1))
+		if err != nil {
+			t.Fatalf("iterate with min mod revision failed: %v", err)
+		}
+		var iterated []string
+		iter(func(response *GetResponse, err error) bool {
+			if err != nil {
+				t.Fatalf("iterate callback failed: %v", err)
+			}
+			for _, kv := range response.Kvs {
+				iterated = append(iterated, string(kv.Key))
+			}
+			return true
+		})
+		if !slices.Equal(iterated, scenario.Expected.MinModRevisionAfterSeed) {
+			t.Fatalf("iterate min mod revision: got keys %v, want %v", iterated, scenario.Expected.MinModRevisionAfterSeed)
 		}
 	})
 

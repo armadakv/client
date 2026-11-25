@@ -105,6 +105,18 @@ func (op *Op) IsKeysOnly() bool { return op.keysOnly }
 // IsCountOnly returns whether countOnly is set.
 func (op *Op) IsCountOnly() bool { return op.countOnly }
 
+// MinModRev returns the operation's lower bound on key mod revisions, or 0.
+func (op *Op) MinModRev() int64 { return op.minModRev }
+
+// MaxModRev returns the operation's upper bound on key mod revisions, or 0.
+func (op *Op) MaxModRev() int64 { return op.maxModRev }
+
+// MinCreateRev returns the operation's lower bound on key create revisions, or 0.
+func (op *Op) MinCreateRev() int64 { return op.minCreateRev }
+
+// MaxCreateRev returns the operation's upper bound on key create revisions, or 0.
+func (op *Op) MaxCreateRev() int64 { return op.maxCreateRev }
+
 // WithRangeBytes sets the byte slice for the Op's range end.
 func (op *Op) WithRangeBytes(end []byte) { op.end = end }
 
@@ -367,6 +379,36 @@ func WithKeysOnly() OpOption {
 // WithCountOnly makes the 'Get' request return only the count of keys.
 func WithCountOnly() OpOption {
 	return func(op *Op) { op.countOnly = true }
+}
+
+// WithMinModRev filters a 'Get' or 'Iterate' request to the keys whose mod
+// revision is at least rev; keys last modified before rev are left out. Only
+// live keys are filtered: a key deleted after rev is not reported. 0 means no
+// lower bound.
+//
+// Together with the highest mod revision seen so far it lets a reader fetch
+// only what changed since: WithMinModRev(watermark+1).
+func WithMinModRev(rev int64) OpOption {
+	return func(op *Op) { op.minModRev = rev }
+}
+
+// WithMaxModRev filters a 'Get' or 'Iterate' request to the keys whose mod
+// revision is at most rev. 0 means no upper bound.
+func WithMaxModRev(rev int64) OpOption {
+	return func(op *Op) { op.maxModRev = rev }
+}
+
+// WithMinCreateRev filters a 'Get' or 'Iterate' request to the keys whose
+// create revision is at least rev, i.e. keys created at or after rev. 0 means
+// no lower bound.
+func WithMinCreateRev(rev int64) OpOption {
+	return func(op *Op) { op.minCreateRev = rev }
+}
+
+// WithMaxCreateRev filters a 'Get' or 'Iterate' request to the keys whose
+// create revision is at most rev. 0 means no upper bound.
+func WithMaxCreateRev(rev int64) OpOption {
+	return func(op *Op) { op.maxCreateRev = rev }
 }
 
 // WithPrevKV gets the previous key-value pair before the event happens. If the previous KV is already compacted,

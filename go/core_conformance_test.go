@@ -22,7 +22,9 @@ type coreConformanceFixture struct {
 		GetDefault        rangeScenario      `json:"getDefault"`
 		GetPrefixKeysOnly rangeScenario      `json:"getPrefixKeysOnly"`
 		GetCountOnlyRange rangeScenario      `json:"getCountOnlyRange"`
+		GetRevFilters     rangeScenario      `json:"getRevisionFilters"`
 		IteratePrefix     iterateScenario    `json:"iteratePrefix"`
+		IterateRevFilters iterateScenario    `json:"iterateRevisionFilters"`
 		PutPrevKV         putScenario        `json:"putPrevKV"`
 		DeletePrefixPrev  deleteScenario     `json:"deletePrefixPrevKV"`
 		DeleteRange       deleteScenario     `json:"deleteRange"`
@@ -86,6 +88,49 @@ type rangeOptions struct {
 	KeysOnly     bool   `json:"keysOnly"`
 	CountOnly    bool   `json:"countOnly"`
 	Limit        int64  `json:"limit"`
+	revisionFilters
+}
+
+// revisionFilters are the mod and create revision bounds of a range request.
+type revisionFilters struct {
+	MinModRevision    int64 `json:"minModRevision"`
+	MaxModRevision    int64 `json:"maxModRevision"`
+	MinCreateRevision int64 `json:"minCreateRevision"`
+	MaxCreateRevision int64 `json:"maxCreateRevision"`
+}
+
+// revisionFilterOptions returns the options setting the given bounds; a zero
+// bound sets nothing.
+func revisionFilterOptions(f revisionFilters) []OpOption {
+	var opts []OpOption
+	if f.MinModRevision != 0 {
+		opts = append(opts, WithMinModRev(f.MinModRevision))
+	}
+	if f.MaxModRevision != 0 {
+		opts = append(opts, WithMaxModRev(f.MaxModRevision))
+	}
+	if f.MinCreateRevision != 0 {
+		opts = append(opts, WithMinCreateRev(f.MinCreateRevision))
+	}
+	if f.MaxCreateRevision != 0 {
+		opts = append(opts, WithMaxCreateRev(f.MaxCreateRevision))
+	}
+	return opts
+}
+
+// assertRevisionFilters checks the bounds on the recorded op and on the
+// RangeRequest it is sent as.
+func assertRevisionFilters(t *testing.T, op Op, table string, want revisionFilters) {
+	t.Helper()
+	assertEqual(t, op.MinModRev(), want.MinModRevision, "op min mod revision")
+	assertEqual(t, op.MaxModRev(), want.MaxModRevision, "op max mod revision")
+	assertEqual(t, op.MinCreateRev(), want.MinCreateRevision, "op min create revision")
+	assertEqual(t, op.MaxCreateRev(), want.MaxCreateRevision, "op max create revision")
+	req := op.toRangeRequest(table)
+	assertEqual(t, req.MinModRevision, want.MinModRevision, "request min mod revision")
+	assertEqual(t, req.MaxModRevision, want.MaxModRevision, "request max mod revision")
+	assertEqual(t, req.MinCreateRevision, want.MinCreateRevision, "request min create revision")
+	assertEqual(t, req.MaxCreateRevision, want.MaxCreateRevision, "request max create revision")
 }
 
 type putOptions struct {
@@ -104,6 +149,7 @@ type rangeExpected struct {
 	Linearizable bool   `json:"linearizable"`
 	KeysOnly     bool   `json:"keysOnly"`
 	CountOnly    bool   `json:"countOnly"`
+	revisionFilters
 }
 
 type putExpected struct {
@@ -278,6 +324,68 @@ func TestCoreConformance(t *testing.T) {
 		assertEqual(t, recorded.Request.IsCountOnly(), scenario.ExpectedRequest.CountOnly, "countOnly")
 		assertEqual(t, resp.Count, scenario.Response.Count, "response count")
 		assertEqual(t, len(resp.Kvs), 0, "response kv count")
+	})
+
+	t.Run("get revision filters", func(t *testing.T) {
+		scenario := fixture.Scenarios.GetRevFilters
+		fake, stop := NewFake(FakeResponse{Response: (&GetResponse{
+			Header: &ResponseHeader{Revision: scenario.Response.Header.Revision},
+			Kvs:    fixtureKVs(scenario.Response.KVs),
+			Count:  scenario.Response.Count,
+		}).OpResponse()})
+		defer stop()
+
+		client := fake.Client()
+		defer client.Close()
+
+		opts := append([]OpOption{WithPrefix(), WithSerializable()}, revisionFilterOptions(scenario.Options.revisionFilters)...)
+		resp, err := client.Get(context.Background(), scenario.Table, scenario.Key, opts...)
+		if err != nil {
+			t.Fatalf("get with revision filters returned error: %v", err)
+		}
+
+		recorded := singleRecordedRequest(t, fake.RecordedRequests())
+		assertEqual(t, string(recorded.Request.RangeBytes()), scenario.ExpectedRequest.RangeEnd, "range end")
+		assertEqual(t, !recorded.Request.IsSerializable(), scenario.ExpectedRequest.Linearizable, "linearizable")
+		assertRevisionFilters(t, recorded.Request, scenario.Table, scenario.ExpectedRequest.revisionFilters)
+		assertEqual(t, resp.Count, scenario.Response.Count, "response count")
+	})
+
+	t.Run("iterate revision filters", func(t *testing.T) {
+		scenario := fixture.Scenarios.IterateRevFilters
+		chunks := iterateChunks(scenario.ResponseChunks)
+		fake, stop := NewFake(FakeResponse{Response: IteratorResponse(func(yield func(response *GetResponse, err error) bool) {
+			for _, chunk := range chunks {
+				if !yield(chunk, nil) {
+					return
+				}
+			}
+		}).OpResponse()})
+		defer stop()
+
+		client := fake.Client()
+		defer client.Close()
+
+		opts := append([]OpOption{WithPrefix(), WithSerializable()}, revisionFilterOptions(scenario.Options.revisionFilters)...)
+		iter, err := client.Iterate(context.Background(), scenario.Table, scenario.Key, opts...)
+		if err != nil {
+			t.Fatalf("iterate with revision filters returned error: %v", err)
+		}
+		var keys []string
+		iter(func(response *GetResponse, err error) bool {
+			if err != nil {
+				t.Fatalf("iterate callback returned error: %v", err)
+			}
+			for _, kv := range response.Kvs {
+				keys = append(keys, string(kv.Key))
+			}
+			return true
+		})
+
+		recorded := singleRecordedRequest(t, fake.RecordedRequests())
+		assertEqual(t, string(recorded.Request.RangeBytes()), scenario.ExpectedRequest.RangeEnd, "range end")
+		assertRevisionFilters(t, recorded.Request, scenario.Table, scenario.ExpectedRequest.revisionFilters)
+		assertEqual(t, len(keys), len(scenario.ResponseChunks), "iterate key count")
 	})
 
 	t.Run("iterate prefix", func(t *testing.T) {
