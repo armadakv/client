@@ -72,6 +72,10 @@ public class KVImpl extends Impl implements KV {
                 .setCountOnly(option.isCountOnly())
                 .setKeysOnly(option.isKeysOnly())
                 .setLinearizable(!option.isSerializable())
+                .setMinModRevision(option.getMinModRevision())
+                .setMaxModRevision(option.getMaxModRevision())
+                .setMinCreateRevision(option.getMinCreateRevision())
+                .setMaxCreateRevision(option.getMaxCreateRevision())
                 .build();
 
         return execute(
@@ -102,6 +106,10 @@ public class KVImpl extends Impl implements KV {
                 .setCountOnly(option.isCountOnly())
                 .setKeysOnly(option.isKeysOnly())
                 .setLinearizable(!option.isSerializable())
+                .setMinModRevision(option.getMinModRevision())
+                .setMaxModRevision(option.getMaxModRevision())
+                .setMinCreateRevision(option.getMinCreateRevision())
+                .setMaxCreateRevision(option.getMaxCreateRevision())
                 .build();
         return execute(
                 () -> stub.withDeadlineAfter(option.getTimeout(), option.getTimeoutUnit()).iterateRange(request),

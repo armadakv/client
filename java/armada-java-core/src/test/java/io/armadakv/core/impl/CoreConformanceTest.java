@@ -189,6 +189,63 @@ class CoreConformanceTest {
     }
 
     @Test
+    void getRevisionFiltersScenario() {
+        var scenario = fixture.scenarios().getRevisionFilters();
+        var stub = new KVConformanceStub();
+        stub.rangeResponse = RangeResponse.newBuilder()
+                .setHeader(header(scenario.response().header().revision()))
+                .addAllKvs(kvList(scenario.response().kvs()))
+                .setCount(scenario.response().count())
+                .build();
+        serviceRegistry.addService(stub);
+
+        GetResponse response = kvClient.get(bytes(scenario.table()), bytes(scenario.key()), revisionFilterOption(scenario.options()));
+
+        assertThat(stub.lastRangeRequest.getRangeEnd().toStringUtf8()).isEqualTo(scenario.expectedRequest().rangeEnd());
+        assertThat(stub.lastRangeRequest.getLinearizable()).isEqualTo(scenario.expectedRequest().linearizable());
+        assertRevisionFilters(stub.lastRangeRequest, scenario.expectedRequest());
+        assertThat(response.count()).isEqualTo(scenario.response().count());
+    }
+
+    @Test
+    void iterateRevisionFiltersScenario() {
+        var scenario = fixture.scenarios().iterateRevisionFilters();
+        var stub = new KVConformanceStub();
+        stub.iterateResponses = scenario.responseChunks().stream()
+                .map(chunk -> RangeResponse.newBuilder()
+                        .setHeader(header(chunk.header().revision()))
+                        .addAllKvs(kvList(chunk.kvs()))
+                        .setCount(chunk.count())
+                        .build())
+                .toList();
+        serviceRegistry.addService(stub);
+
+        var responses = kvClient.iterate(bytes(scenario.table()), bytes(scenario.key()), revisionFilterOption(scenario.options())).toList();
+
+        assertThat(stub.lastIterateRangeRequest.getRangeEnd().toStringUtf8()).isEqualTo(scenario.expectedRequest().rangeEnd());
+        assertRevisionFilters(stub.lastIterateRangeRequest, scenario.expectedRequest());
+        assertThat(responses).hasSize(scenario.responseChunks().size());
+    }
+
+    private static GetOption revisionFilterOption(RangeOptions options) {
+        return GetOption.builder()
+                .isPrefix(options.prefix())
+                .withSerializable(options.serializable())
+                .withMinModRevision(options.minModRevision())
+                .withMaxModRevision(options.maxModRevision())
+                .withMinCreateRevision(options.minCreateRevision())
+                .withMaxCreateRevision(options.maxCreateRevision())
+                .build();
+    }
+
+    private static void assertRevisionFilters(RangeRequest request, RangeExpectedRequest expected) {
+        assertThat(request.getMinModRevision()).isEqualTo(expected.minModRevision());
+        assertThat(request.getMaxModRevision()).isEqualTo(expected.maxModRevision());
+        assertThat(request.getMinCreateRevision()).isEqualTo(expected.minCreateRevision());
+        assertThat(request.getMaxCreateRevision()).isEqualTo(expected.maxCreateRevision());
+    }
+
+    @Test
     void iteratePrefixScenario() {
         var scenario = fixture.scenarios().iteratePrefix();
         var stub = new KVConformanceStub();
@@ -502,7 +559,9 @@ class CoreConformanceTest {
             RangeScenario getDefault,
             RangeScenario getPrefixKeysOnly,
             RangeScenario getCountOnlyRange,
+            RangeScenario getRevisionFilters,
             IterateScenario iteratePrefix,
+            IterateScenario iterateRevisionFilters,
             PutScenario putPrevKV,
             DeleteScenario deletePrefixPrevKV,
             DeleteScenario deleteRange,
@@ -531,7 +590,8 @@ class CoreConformanceTest {
     record MemberListScenario(String cluster, List<MemberFixture> members) {
     }
 
-    record RangeOptions(String rangeEnd, boolean prefix, boolean serializable, boolean keysOnly, boolean countOnly, long limit) {
+    record RangeOptions(String rangeEnd, boolean prefix, boolean serializable, boolean keysOnly, boolean countOnly, long limit,
+                        long minModRevision, long maxModRevision, long minCreateRevision, long maxCreateRevision) {
     }
 
     record PutOptions(boolean prevKV) {
@@ -540,7 +600,8 @@ class CoreConformanceTest {
     record DeleteOptions(String rangeEnd, boolean prefix, boolean prevKV) {
     }
 
-    record RangeExpectedRequest(String rangeEnd, long limit, boolean linearizable, boolean keysOnly, boolean countOnly) {
+    record RangeExpectedRequest(String rangeEnd, long limit, boolean linearizable, boolean keysOnly, boolean countOnly,
+                                long minModRevision, long maxModRevision, long minCreateRevision, long maxCreateRevision) {
     }
 
     record PutExpectedRequest(boolean prevKV) {

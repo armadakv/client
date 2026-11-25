@@ -21,6 +21,26 @@
       "prefix": "pref/",
       "expectedKeys": ["pref/a", "pref/b"]
     },
+    "revisionFilters": {
+      "table": "bb-revision-filters",
+      "seed": [
+        { "key": "pref/a", "value": "1" },
+        { "key": "pref/b", "value": "2" },
+        { "key": "other", "value": "3" }
+      ],
+      "changes": [
+        { "key": "pref/a", "value": "1-changed" },
+        { "key": "pref/c", "value": "4" },
+        { "key": "other", "value": "3-changed" }
+      ],
+      "prefix": "pref/",
+      "expected": {
+        "minModRevisionAfterSeed": ["pref/a", "pref/c"],
+        "maxModRevisionAtSeed": ["pref/b"],
+        "minCreateRevisionAfterSeed": ["pref/c"],
+        "maxCreateRevisionAtSeed": ["pref/a", "pref/b"]
+      }
+    },
     "deletePrefix": {
       "table": "bb-delete-prefix",
       "seed": [
