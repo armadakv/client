@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.protobuf)
 }
 
+description = "Generated gRPC and protobuf stubs of the Armada KV API."
+
 sourceSets {
     main {
         proto {

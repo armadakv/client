@@ -6,6 +6,8 @@ plugins {
     id("armada.library-conventions")
 }
 
+description = "JUnit Jupiter extension and Testcontainers support for testing against Armada KV."
+
 dependencies {
     api(libs.grpc.core)
     api(libs.grpc.stub)

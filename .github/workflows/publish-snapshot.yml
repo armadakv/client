@@ -1,0 +1,46 @@
+name: Publish snapshot
+
+# Every change to the Java SDK or the protocol on main publishes the version in
+# java/gradle.properties (a -SNAPSHOT) to GitHub Packages.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "java/**"
+      - "api/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-snapshot
+  cancel-in-progress: false
+
+jobs:
+  java:
+    name: Publish Java snapshot to GitHub Packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Require a snapshot version
+        working-directory: java
+        run: |
+          version=$(sed -n 's/^version=//p' gradle.properties)
+          if [[ "${version}" != *-SNAPSHOT ]]; then echo "version ${version} is not a snapshot" >&2; exit 1; fi
+      - name: Publish
+        working-directory: java
+        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
+        env:
+          ORG_GRADLE_PROJECT_GitHubPackagesUsername: ${{ github.actor }}
+          ORG_GRADLE_PROJECT_GitHubPackagesPassword: ${{ secrets.GITHUB_TOKEN }}

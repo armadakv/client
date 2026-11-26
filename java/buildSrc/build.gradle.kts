@@ -8,6 +8,11 @@ plugins {
 
 repositories {
     gradlePluginPortal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation(libs.maven.publish.plugin)
 }
 
 java {

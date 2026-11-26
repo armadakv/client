@@ -6,6 +6,8 @@ plugins {
     id("armada.library-conventions")
 }
 
+description = "Spring Data KeyValue support for Armada KV."
+
 dependencies {
     api(libs.spring.data.keyvalue)
     api(libs.spring.context.support)

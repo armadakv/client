@@ -42,3 +42,11 @@ make check
 ```
 
 `make generate-proto` regenerates Go and Java protobuf outputs from the shared vendored contract. `make conformance` runs the shared core conformance scenarios against the Go and JVM core SDKs. `make check` validates the scaffold, the protocol sync, generated Go protobuf drift, the conformance fixture scaffold, and the migrated Go and JVM SDKs.
+
+## Using the SDKs
+
+- **Go:** `go get github.com/armadakv/client/go` (plugins under `github.com/armadakv/client/go/plugin/...`).
+- **Java:** `io.armadakv:armada-java-core` (client), `armada-java-spring-data` (Spring Data KeyValue),
+  `armada-java-test` (JUnit and Testcontainers helpers) and `armada-java-grpc` (generated stubs). Releases
+  are on Maven Central; snapshots of `main` are on GitHub Packages. See [docs/releasing.md](docs/releasing.md).
+

@@ -6,6 +6,8 @@ plugins {
     id("armada.library-conventions")
 }
 
+description = "Armada KV client for the JVM."
+
 sourceSets {
     test {
         resources.srcDir("../../conformance/fixtures")

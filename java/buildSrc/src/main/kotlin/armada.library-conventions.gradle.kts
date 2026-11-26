@@ -2,13 +2,15 @@
  * Copyright JAMF Software, LLC
  */
 
+import com.vanniktech.maven.publish.JavaLibrary
+import com.vanniktech.maven.publish.JavadocJar
+
 plugins {
     `java-library`
-    `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish")
 }
 
-// group and version come from gradle.properties
+// group and version come from gradle.properties; a release passes -Pversion=X.Y.Z.
 val libs = the<VersionCatalogsExtension>().named("libs")
 
 repositories {
@@ -18,36 +20,56 @@ repositories {
 
 // Apply a specific Java toolchain to ease working on different environments.
 java {
-    withSourcesJar()
-    withJavadocJar()
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
+// Releases go to Maven Central through the Central Portal, signed; snapshots go to
+// GitHub Packages. Credentials and the signing key are Gradle properties, normally
+// passed as ORG_GRADLE_PROJECT_* environment variables by the release workflows:
+// mavenCentralUsername, mavenCentralPassword, signingInMemoryKey,
+// signingInMemoryKeyPassword, GitHubPackagesUsername, GitHubPackagesPassword.
+mavenPublishing {
+    configure(JavaLibrary(javadocJar = JavadocJar.Javadoc(), sourcesJar = true))
+    publishToMavenCentral(automaticRelease = true)
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
+    coordinates(project.group.toString(), project.name, project.version.toString())
+    pom {
+        name.set(project.name)
+        description.set(provider { project.description ?: project.name })
+        url.set("https://github.com/armadakv/client")
+        inceptionYear.set("2025")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://github.com/armadakv/client/blob/main/LICENSE")
+                distribution.set("repo")
+            }
+        }
+        developers {
+            developer {
+                id.set("armadakv")
+                name.set("ArmadaKV Contributors")
+                url.set("https://github.com/armadakv")
+            }
+        }
+        scm {
+            url.set("https://github.com/armadakv/client")
+            connection.set("scm:git:https://github.com/armadakv/client.git")
+            developerConnection.set("scm:git:ssh://git@github.com/armadakv/client.git")
+        }
+    }
+}
 
 publishing {
     repositories {
         maven {
-            name = "OSSRH"
-            url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = project.findProperty("ossrh.user") as String? ?: System.getenv("MAVEN_USERNAME")
-                password = project.findProperty("ossrh.user") as String? ?: System.getenv("MAVEN_PASSWORD")
-            }
-        }
-        maven {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/armadakv/client")
-            credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-                password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
-            }
-        }
-    }
-    publications {
-        register<MavenPublication>("library") {
-            from(components["java"])
+            credentials(PasswordCredentials::class)
         }
     }
 }
