@@ -3,6 +3,14 @@
  */
 
 rootProject.name = "armada-java.examples"
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
+    }
+}
 include("spring-data-example")
 
 

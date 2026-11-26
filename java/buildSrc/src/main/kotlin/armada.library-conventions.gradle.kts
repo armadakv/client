@@ -8,8 +8,8 @@ plugins {
     signing
 }
 
-// Projects have the 'com.example' group by convention
-group = "io.armadakv"
+// group and version come from gradle.properties
+val libs = the<VersionCatalogsExtension>().named("libs")
 
 repositories {
     // Use Maven Central for resolving dependencies.
@@ -55,9 +55,9 @@ publishing {
 testing {
     suites {
         // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
+        named<JvmTestSuite>("test") {
             // Use JUnit Jupiter test framework
-            useJUnitJupiter("5.9.3")
+            useJUnitJupiter(libs.findVersion("junit").get().requiredVersion)
         }
     }
 }

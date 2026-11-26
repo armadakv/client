@@ -4,8 +4,8 @@
 
 plugins {
     application
-    id("org.springframework.boot") version "3.2.2"
-    id("io.spring.dependency-management") version "1.1.4"
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
 }
 
 repositories {
@@ -24,9 +24,9 @@ dependencies {
 testing {
     suites {
         // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
+        named<JvmTestSuite>("test") {
             // Use JUnit Jupiter test framework
-            useJUnitJupiter("5.9.3")
+            useJUnitJupiter(libs.versions.junit.get())
         }
     }
 }
