@@ -15,7 +15,6 @@ sourceSets {
 }
 
 dependencies {
-    // Exported to consumers, that is to say found on their compile classpath.
     api(project(":armada-java-grpc"))
     api(libs.protobuf.java)
     api(libs.grpc.core)
@@ -23,7 +22,6 @@ dependencies {
     api(libs.grpc.netty.shaded)
     api(libs.sslcontext.kickstart)
 
-    // Used internally, not exposed to consumers on their compile classpath.
     implementation(libs.slf4j.api)
     implementation(libs.snappy.java)
     implementation(libs.sslcontext.kickstart.netty)

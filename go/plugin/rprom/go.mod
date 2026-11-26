@@ -8,9 +8,7 @@ require (
 	google.golang.org/grpc v1.85.0
 )
 
-// The core is required at the version this module is released with; all modules
-// are tagged on the same commit (docs/releasing.md). The replace only applies
-// inside this repository and is ignored by consumers.
+// Local development only; consumers ignore replace.
 replace github.com/armadakv/client/go => ../..
 
 require (

@@ -31,7 +31,6 @@ jobs:
 
   go:
     name: Tag and verify Go modules
-    # Only a pushed tag tags the Go modules; a manual run is a dry run.
     if: github.event_name == 'push'
     needs: dry-run
     runs-on: ubuntu-latest
@@ -45,15 +44,12 @@ jobs:
         with:
           go-version-file: go/go.mod
       - name: Tag the Go modules on the release commit
-        # go/vX.Y.Z and go/plugin/<name>/vX.Y.Z; tags pushed with the workflow
-        # token do not start other workflows.
         run: ./scripts/tag-go-modules.sh --push "${GITHUB_REF_NAME}"
       - name: Resolve every module through proxy.golang.org
         run: ./scripts/verify-go-release.sh "${GITHUB_REF_NAME}"
 
   java:
     name: Publish Java to Maven Central
-    # Only a pushed tag publishes; a manual run is a dry run.
     if: github.event_name == 'push'
     needs: dry-run
     runs-on: ubuntu-latest
@@ -83,7 +79,6 @@ jobs:
         run: ./gradlew test
       - name: Publish and release
         working-directory: java
-        # The tag vX.Y.Z publishes version X.Y.Z of every artifact.
         run: ./gradlew publishAndReleaseToMavenCentral -Pversion="${GITHUB_REF_NAME#v}"
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}

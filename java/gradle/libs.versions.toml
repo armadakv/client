@@ -1,5 +1,4 @@
 [versions]
-# One place for every dependency version of the Java SDK.
 grpc = "1.86.0"
 protobuf = "4.36.2"
 slf4j = "2.0.20"

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Fails unless the tree is ready to be released as vX.Y.Z: java/gradle.properties
-# holds X.Y.Z and every Go plugin requires the core at vX.Y.Z.
+# Fails unless Java and the Go plugins' core requirement are at vX.Y.Z.
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORE=github.com/armadakv/client/go

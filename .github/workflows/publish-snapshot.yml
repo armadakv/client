@@ -1,7 +1,5 @@
 name: Publish snapshot
 
-# Every change to the Java SDK or the protocol on main publishes the version in
-# java/gradle.properties (a -SNAPSHOT) to GitHub Packages.
 on:
   push:
     branches:

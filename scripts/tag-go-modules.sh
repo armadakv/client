@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Creates the Go module tags of release vX.Y.Z on the current commit: go/vX.Y.Z
-# for the core and go/plugin/<name>/vX.Y.Z for every plugin. With --push they
-# are pushed to origin.
+# Tags every Go module at vX.Y.Z on HEAD; --push pushes the tags.
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 push=false

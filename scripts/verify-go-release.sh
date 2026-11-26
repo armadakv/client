@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# Resolves every Go module of release vX.Y.Z through the public module proxy,
-# as a first-time consumer would (no replace directives, no workspace, an empty
-# module cache), each module on its own and then all of them together. This also
-# warms the proxy, which can take a moment to see new tags, so each is retried.
-#
-# Each consumer gets its own module cache: with Go 1.27, `go get` of a nested
-# module fails ("found, but does not contain package") when its parent module
-# is already cached at the same version; the same happens with
-# go.opentelemetry.io/otel and otel/sdk, so it is not specific to this layout.
+# Resolves each Go module at vX.Y.Z through the public proxy as a new consumer.
+# Per-consumer caches avoid a Go 1.27 bug with nested modules of a cached parent.
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="${1:?version vX.Y.Z is required}"
@@ -16,12 +9,9 @@ export GOPROXY="${GOPROXY_VERIFY:-https://proxy.golang.org}"
 export GOFLAGS=-mod=mod GOWORK=off
 
 work="$(mktemp -d)"
-# The module cache is read-only by default; let the cleanup remove it.
 export GOFLAGS="${GOFLAGS} -modcacherw"
 trap 'rm -rf "${work}"' EXIT
 
-# consumer <name> <module@version>...: a fresh module that requires the given ones;
-# every armadakv module in its build list must then be at the release.
 consumer() {
   local name="$1"; shift
   local dir="${work}/${name//\//_}"

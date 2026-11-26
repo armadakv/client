@@ -10,7 +10,6 @@ plugins {
     id("com.vanniktech.maven.publish")
 }
 
-// group and version come from gradle.properties; a release passes -Pversion=X.Y.Z.
 val libs = the<VersionCatalogsExtension>().named("libs")
 
 repositories {
@@ -25,11 +24,7 @@ java {
     }
 }
 
-// Releases go to Maven Central through the Central Portal, signed; snapshots go to
-// GitHub Packages. Credentials and the signing key are Gradle properties, normally
-// passed as ORG_GRADLE_PROJECT_* environment variables by the release workflows:
-// mavenCentralUsername, mavenCentralPassword, signingInMemoryKey,
-// signingInMemoryKeyPassword, GitHubPackagesUsername, GitHubPackagesPassword.
+// Releases: Maven Central (signed). Snapshots: GitHub Packages. See docs/releasing.md.
 mavenPublishing {
     configure(JavaLibrary(javadocJar = JavadocJar.Javadoc(), sourcesJar = true))
     publishToMavenCentral(automaticRelease = true)

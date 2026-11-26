@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
-# Prepares the release commit for version X.Y.Z: the Java version and the core
-# version every Go plugin requires. All Go modules are tagged on that commit,
-# so a plugin at vX.Y.Z resolves the core at vX.Y.Z.
-#
-#   scripts/prepare-release.sh 0.2.0          # release commit
-#   scripts/prepare-release.sh --next 0.3.0   # after the release: Java back to a snapshot
+# Usage: prepare-release.sh X.Y.Z (release) | prepare-release.sh --next X.Y.Z (next Java snapshot)
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORE=github.com/armadakv/client/go

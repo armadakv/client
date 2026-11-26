@@ -44,7 +44,6 @@ public class JsonConverterFactory implements ConditionalGenericConverter {
 
     @Override
     public Object convert(Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
-        // Jackson 3 reports failures as unchecked JacksonExceptions.
         if (sourceType.isAssignableTo(TypeDescriptor.valueOf(byte[].class))) {
             return mapper.readValue((byte[]) source, targetType.getObjectType());
         } else if (sourceType.isAssignableTo(TypeDescriptor.valueOf(ByteSequence.class))) {

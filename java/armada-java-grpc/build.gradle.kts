@@ -18,7 +18,6 @@ sourceSets {
 }
 
 dependencies {
-    // The generated messages are this module's API; protoc 4.x code needs the matching runtime.
     api(libs.protobuf.java)
     implementation(libs.grpc.protobuf)
     implementation(libs.grpc.services)
