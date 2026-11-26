@@ -16,7 +16,7 @@ import org.testcontainers.containers.Network;
 import com.google.common.base.Strings;
 
 public final class Armada {
-    public static final String CONTAINER_IMAGE = "ghcr.io/armadakv/armada:master";
+    public static final String CONTAINER_IMAGE = "ghcr.io/armadakv/armada:v0.3.2";
     public static final int ARMADA_CLIENT_PORT = 8443;
     public static final int ARMADA_PEER_PORT = 5012;
     public static final int ARMADA_METRICS_PORT = 8079;

@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CoreBlackboxConformanceTest {
 
-    private static final String DEFAULT_IMAGE = "ghcr.io/armadakv/armada:master";
+    private static final String DEFAULT_IMAGE = "ghcr.io/armadakv/armada:v0.3.2";
 
     private BlackboxFixture fixture;
     private ArmadaCluster cluster;

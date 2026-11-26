@@ -24,9 +24,9 @@ ensure_go_tool() {
   fi
 }
 
-ensure_go_tool "protoc-gen-go" "google.golang.org/protobuf/cmd/protoc-gen-go@v1.32.0"
-ensure_go_tool "protoc-gen-go-grpc" "google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0"
-ensure_go_tool "protoc-gen-go-vtproto" "github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v0.6.0"
+ensure_go_tool "protoc-gen-go" "google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12"
+ensure_go_tool "protoc-gen-go-grpc" "google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.2"
+ensure_go_tool "protoc-gen-go-vtproto" "github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v0.6.1-0.20260702190614-8ae5a48058df"
 
 proto_files=()
 while IFS= read -r proto_file; do

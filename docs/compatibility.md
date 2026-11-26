@@ -4,8 +4,8 @@
 
 - The authoritative wire contract lives in `armadakv/armada`.
 - This repository vendors a pinned copy of that contract.
-- The current scaffold pins the `armada` master head commit as a bootstrap source, not a production release source.
-- TODO: replace the bootstrap pin with the production-approved upstream ref before production use.
+- The pin is an `armada` release tag (`ARMADA_REF` in `api/upstream.env`, currently `v0.3.2`), and the
+  black-box conformance suites default to the image of the same release (`ghcr.io/armadakv/armada:v0.3.2`).
 - SDK behavior must stay aligned with the vendored protocol snapshot and the conformance suite.
 - The protobuf wire package still includes legacy `regatta.v1` naming where the upstream Armada API keeps it for compatibility.
 

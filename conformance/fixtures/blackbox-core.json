@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "blackbox-core-sdk",
-  "image": "ghcr.io/armadakv/armada:master",
+  "image": "ghcr.io/armadakv/armada:v0.3.2",
   "scenarios": {
     "tableLifecycle": {
       "table": "bb-table-lifecycle"

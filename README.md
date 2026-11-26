@@ -30,7 +30,7 @@ The Go and JVM SDKs have both been migrated into this monorepo under `go/` and `
 
 The canonical wire contract stays in `armadakv/armada`. This repository vendors a pinned copy of the protocol files under `api/proto/` so every SDK and conformance job uses the same contract snapshot.
 
-> TODO: replace the current bootstrap pin to the `armada` master commit with the production-approved upstream ref before this repository is used in production. The earlier `v0.10.0` pin is scaffold-only and is not the intended production source.
+The pin is an Armada release tag (currently `v0.3.2`); the black-box conformance suites run against the image of the same release.
 
 ## Common commands
 
