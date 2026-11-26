@@ -3,11 +3,14 @@ module github.com/armadakv/client/go/plugin/rprom
 go 1.26.4
 
 require (
-	github.com/armadakv/client/go v0.0.0
+	github.com/armadakv/client/go v0.1.0
 	github.com/prometheus/client_golang v1.25.0
 	google.golang.org/grpc v1.85.0
 )
 
+// The core is required at the version this module is released with; all modules
+// are tagged on the same commit (docs/releasing.md). The replace only applies
+// inside this repository and is ignored by consumers.
 replace github.com/armadakv/client/go => ../..
 
 require (

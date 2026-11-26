@@ -23,3 +23,7 @@ echo "  version: ${VERSION}"
 echo "  pinned armada ref: ${ARMADA_REF}"
 echo "  sdk roots: go/, java/"
 echo "  java: io.armadakv:armada-java-* ${VERSION#v} -> Maven Central (tag push only)"
+echo "  go tags:"
+while read -r dir _; do echo "    ${dir}/${VERSION}"; done < <("${ROOT_DIR}/scripts/go-modules.sh")
+"${ROOT_DIR}/scripts/check-release-versions.sh" "${VERSION}"
+echo "  versions: consistent"

@@ -20,10 +20,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
       - name: Validate release scaffold
         run: ./scripts/release-dry-run.sh "${VERSION}"
         env:
           VERSION: ${{ inputs.version || github.ref_name }}
+
+  go:
+    name: Tag and verify Go modules
+    # Only a pushed tag tags the Go modules; a manual run is a dry run.
+    if: github.event_name == 'push'
+    needs: dry-run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+      - name: Tag the Go modules on the release commit
+        # go/vX.Y.Z and go/plugin/<name>/vX.Y.Z; tags pushed with the workflow
+        # token do not start other workflows.
+        run: ./scripts/tag-go-modules.sh --push "${GITHUB_REF_NAME}"
+      - name: Resolve every module through proxy.golang.org
+        run: ./scripts/verify-go-release.sh "${GITHUB_REF_NAME}"
 
   java:
     name: Publish Java to Maven Central

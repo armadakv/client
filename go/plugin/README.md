@@ -11,6 +11,12 @@ This directory contains plug-in support for external libraries to use with a `Cl
 └── <a href="./rzap">rzap</a> — plug-in uber-go/zap logging lib
 </pre>
 
+Each plugin is its own Go module, released together with the core at the same version:
+
+```
+go get github.com/armadakv/client/go@vX.Y.Z github.com/armadakv/client/go/plugin/rotel@vX.Y.Z
+```
+
 These plugins can be enabled by using [Client.WithHooks](https://pkg.go.dev/github.com/armadakv/client/go?utm_source=godoc#WithHooks) in your
 Go application. For example:
 

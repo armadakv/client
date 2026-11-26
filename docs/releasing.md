@@ -17,6 +17,23 @@ Go makes this slightly more complex: a Go module that lives in a subdirectory is
 
 Between releases `java/gradle.properties` holds the next version as a `-SNAPSHOT`.
 
+### Go plugins
+
+`rotel` and `rprom` import the core. Their `go.mod` requires the core **at the version they are released
+with** and keeps a `replace github.com/armadakv/client/go => ../..` for development inside this repository.
+Consumers ignore `replace`, and because every module is tagged on the same commit, a plugin at `vX.Y.Z`
+resolves the core at `go/vX.Y.Z`. `rzap` and `rlogrus` do not depend on the core.
+
+Scripts:
+
+| Script | Does |
+|---|---|
+| `scripts/prepare-release.sh X.Y.Z` | Sets the Java version and the core version the plugins require to `X.Y.Z` |
+| `scripts/prepare-release.sh --next X.Y.Z` | After a release: Java back to `X.Y.Z-SNAPSHOT` |
+| `scripts/check-release-versions.sh vX.Y.Z` | Fails unless both are at `X.Y.Z` (run by the dry run) |
+| `scripts/tag-go-modules.sh [--push] vX.Y.Z` | Tags `go/vX.Y.Z` and `go/plugin/<name>/vX.Y.Z` on the current commit |
+| `scripts/verify-go-release.sh vX.Y.Z` | Resolves every module through proxy.golang.org as a first-time consumer |
+
 ## Java publishing
 
 Publishing is configured in `java/buildSrc` (`armada.library-conventions`) with the
@@ -82,22 +99,18 @@ repositories {
 1. `api/upstream.env` pins an Armada release tag. To move it: update `ARMADA_REF`,
    `make sync-proto generate-proto`, update the black-box image tag to the same release, ensure no drift.
 2. `make check` and `make conformance-blackbox` green against that image.
-3. Open a release PR: set `java/gradle.properties` `version` to `X.Y.Z`, bump the Go plugin `require`
-   lines (see below), write the notes. Merge.
-4. Push the tags: `vX.Y.Z`, `go/vX.Y.Z`, then the plugin tags.
-5. `vX.Y.Z` triggers `release.yml`: dry-run validation, Java tests, then
-   `publishAndReleaseToMavenCentral -Pversion=X.Y.Z`. For Go, warm the proxy:
-   `GOPROXY=proxy.golang.org go list -m github.com/armadakv/client/go@vX.Y.Z` (and each plugin).
-6. Create the GitHub Release with the notes, then set `java/gradle.properties` to the next `-SNAPSHOT`.
-7. Smoke test from a clean project: `go get` each module, resolve each Maven coordinate.
+3. Open a release PR: `scripts/prepare-release.sh X.Y.Z` (Java version and the plugins' core
+   requirement), plus the release notes. Merge.
+4. Push the one tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml` then:
+   - **dry-run**: validates the version and checks it is consistent (`check-release-versions.sh`);
+   - **go**: tags `go/vX.Y.Z` and every `go/plugin/<name>/vX.Y.Z` on the same commit, pushes them, and
+     resolves every module through proxy.golang.org (which also warms the proxy);
+   - **java**: runs the tests and `publishAndReleaseToMavenCentral -Pversion=X.Y.Z`.
+5. Create the GitHub Release with the notes, then `scripts/prepare-release.sh --next X.Y+1.0` on `main`.
+6. Smoke test from a clean project: `go get` each module, resolve each Maven coordinate.
 
-## Open before the first release
-
-### Go plugins
-The plugin modules (`rotel`, `rprom`) require `github.com/armadakv/client/go v0.0.0` plus a
-`replace ... => ../..`. Consumers ignore `replace`, so these modules are **not installable** as is. Release
-order: tag the core first, then bump the plugin `require` to the real version, drop the `replace` (use a local
-`go.work` for development), then tag the plugins.
+If one of the publishing jobs fails, re-run just that job: the Go tags and the Maven Central release are
+independent, and neither can be repeated once it has succeeded (tags exist, Central versions are immutable).
 
 ## Suggested first release
 
