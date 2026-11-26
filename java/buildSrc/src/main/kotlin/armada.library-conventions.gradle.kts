@@ -2,14 +2,15 @@
  * Copyright JAMF Software, LLC
  */
 
+import com.vanniktech.maven.publish.JavaLibrary
+import com.vanniktech.maven.publish.JavadocJar
+
 plugins {
     `java-library`
-    `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish")
 }
 
-// Projects have the 'com.example' group by convention
-group = "io.armadakv"
+val libs = the<VersionCatalogsExtension>().named("libs")
 
 repositories {
     // Use Maven Central for resolving dependencies.
@@ -18,36 +19,52 @@ repositories {
 
 // Apply a specific Java toolchain to ease working on different environments.
 java {
-    withSourcesJar()
-    withJavadocJar()
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
+// Releases: Maven Central (signed). Snapshots: GitHub Packages. See docs/releasing.md.
+mavenPublishing {
+    configure(JavaLibrary(javadocJar = JavadocJar.Javadoc(), sourcesJar = true))
+    publishToMavenCentral(automaticRelease = true)
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
+    coordinates(project.group.toString(), project.name, project.version.toString())
+    pom {
+        name.set(project.name)
+        description.set(provider { project.description ?: project.name })
+        url.set("https://github.com/armadakv/client")
+        inceptionYear.set("2025")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://github.com/armadakv/client/blob/main/LICENSE")
+                distribution.set("repo")
+            }
+        }
+        developers {
+            developer {
+                id.set("armadakv")
+                name.set("ArmadaKV Contributors")
+                url.set("https://github.com/armadakv")
+            }
+        }
+        scm {
+            url.set("https://github.com/armadakv/client")
+            connection.set("scm:git:https://github.com/armadakv/client.git")
+            developerConnection.set("scm:git:ssh://git@github.com/armadakv/client.git")
+        }
+    }
+}
 
 publishing {
     repositories {
         maven {
-            name = "OSSRH"
-            url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = project.findProperty("ossrh.user") as String? ?: System.getenv("MAVEN_USERNAME")
-                password = project.findProperty("ossrh.user") as String? ?: System.getenv("MAVEN_PASSWORD")
-            }
-        }
-        maven {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/armadakv/client")
-            credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-                password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
-            }
-        }
-    }
-    publications {
-        register<MavenPublication>("library") {
-            from(components["java"])
+            credentials(PasswordCredentials::class)
         }
     }
 }
@@ -55,9 +72,9 @@ publishing {
 testing {
     suites {
         // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
+        named<JvmTestSuite>("test") {
             // Use JUnit Jupiter test framework
-            useJUnitJupiter("5.9.3")
+            useJUnitJupiter(libs.findVersion("junit").get().requiredVersion)
         }
     }
 }

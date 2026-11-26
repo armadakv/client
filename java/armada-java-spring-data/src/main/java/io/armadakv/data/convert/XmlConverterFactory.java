@@ -4,12 +4,11 @@
 
 package io.armadakv.data.convert;
 
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.armadakv.core.api.ByteSequence;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.ConditionalGenericConverter;
+import tools.jackson.dataformat.xml.XmlMapper;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.Set;
 
@@ -45,17 +44,13 @@ public class XmlConverterFactory implements ConditionalGenericConverter {
 
     @Override
     public Object convert(Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
-        try {
-            if (sourceType.isAssignableTo(TypeDescriptor.valueOf(byte[].class))) {
-                return mapper.readValue((byte[]) source, targetType.getObjectType());
-            } else if (sourceType.isAssignableTo(TypeDescriptor.valueOf(ByteSequence.class))) {
-                return mapper.readValue(((ByteSequence) source).getBytes(), targetType.getObjectType());
-            } else if (targetType.isAssignableTo(TypeDescriptor.valueOf(ByteSequence.class))) {
-                return ByteSequence.from(mapper.writeValueAsBytes(source));
-            }
-            return mapper.writeValueAsBytes(source);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (sourceType.isAssignableTo(TypeDescriptor.valueOf(byte[].class))) {
+            return mapper.readValue((byte[]) source, targetType.getObjectType());
+        } else if (sourceType.isAssignableTo(TypeDescriptor.valueOf(ByteSequence.class))) {
+            return mapper.readValue(((ByteSequence) source).getBytes(), targetType.getObjectType());
+        } else if (targetType.isAssignableTo(TypeDescriptor.valueOf(ByteSequence.class))) {
+            return ByteSequence.from(mapper.writeValueAsBytes(source));
         }
+        return mapper.writeValueAsBytes(source);
     }
 }

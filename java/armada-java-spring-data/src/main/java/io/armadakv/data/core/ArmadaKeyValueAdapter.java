@@ -101,7 +101,7 @@ public class ArmadaKeyValueAdapter extends AbstractKeyValueAdapter implements In
     }
 
     @Override
-    public Iterable<?> getAllOf(String keyspace) {
+    public Iterable<Object> getAllOf(String keyspace) {
         return getAllOf(keyspace, Object.class);
     }
 

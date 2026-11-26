@@ -2,17 +2,12 @@
  * Copyright JAMF Software, LLC
  */
 
-val protocVersion = "3.25.4"
-val grpcVersion = "1.66.0"
-val javaxAnnotationVersion = "1.3.2"
-
 plugins {
     id("armada.library-conventions")
-    id("com.google.protobuf") version "0.9.4"
+    alias(libs.plugins.protobuf)
 }
 
-group = "io.armadakv"
-version = "1.4.1-SNAPSHOT"
+description = "Generated gRPC and protobuf stubs of the Armada KV API."
 
 sourceSets {
     main {
@@ -23,19 +18,20 @@ sourceSets {
 }
 
 dependencies {
-    implementation("io.grpc:grpc-protobuf:${grpcVersion}")
-    implementation("io.grpc:grpc-services:${grpcVersion}")
-    implementation("io.grpc:grpc-stub:${grpcVersion}")
-    implementation("javax.annotation:javax.annotation-api:$javaxAnnotationVersion")
+    api(libs.protobuf.java)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.grpc.services)
+    implementation(libs.grpc.stub)
+    implementation(libs.javax.annotation.api)
 }
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:${protocVersion}"
+        artifact = libs.protobuf.protoc.get().toString()
     }
     plugins {
         create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+            artifact = libs.grpc.protoc.gen.get().toString()
         }
     }
     generateProtoTasks {

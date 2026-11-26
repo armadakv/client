@@ -104,6 +104,22 @@ message RequestOp {
 
     // count_only when set returns only the count of the keys in the range.
     bool count_only = 5;
+
+    // Inclusive lower bound for the current key incarnation's creation revision.
+    // Zero means unbounded.
+    int64 min_create_revision = 6;
+
+    // Inclusive upper bound for the current key incarnation's creation revision.
+    // Zero means unbounded.
+    int64 max_create_revision = 7;
+
+    // Inclusive lower bound for the current live key's modification revision.
+    // Zero means unbounded; this filters current values, not historical versions.
+    int64 min_mod_revision = 8;
+
+    // Inclusive upper bound for the current live key's modification revision.
+    // Zero means unbounded; this filters current values, not historical versions.
+    int64 max_mod_revision = 9;
   }
 
   message Put {
@@ -191,12 +207,10 @@ message Compare {
   }
   enum CompareTarget {
     VALUE = 0;
-
-    // TODO implement other targets
-    // VERSION = 1;
-    // CREATE = 2;
-    // MOD = 3;
-    // LEASE = 3;
+    // Creation revision of the current live key incarnation.
+    CREATE = 2;
+    // Modification revision of the current live key.
+    MOD = 3;
   }
   // result is logical comparison operation for this comparison.
   CompareResult result = 1;
@@ -208,18 +222,18 @@ message Compare {
     // value is the value of the given key, in bytes.
     bytes value = 4;
 
-    // create_revision is the creation revision of the given key
-    // int64 create_revision = 5;
-    // mod_revision is the last modified revision of the given key.
-    // int64 mod_revision = 6;
-    // version is the version of the given key
-    // int64 version = 7;
-    // lease is the lease id of the given key.
-    // int64 lease = 8;
+    // create_revision compares against the current incarnation's creation revision.
+    // Missing or deleted keys have revision zero.
+    int64 create_revision = 5;
+    // mod_revision compares against the current live key's modification revision.
+    // Missing or deleted keys have revision zero.
+    int64 mod_revision = 6;
     // leave room for more target_union field tags, jump to 64
   }
 
   // range_end compares the given target to all keys in the range [key, range_end).
+  // Only the latest live version of each key is compared. If no live keys match,
+  // revision targets compare against zero and VALUE comparisons fail.
   // See RangeRequest for more details on key ranges.
   bytes range_end = 64;
   // TODO: fill out with most of the rest of RangeRequest fields when needed.
@@ -228,9 +242,10 @@ message Compare {
 message KeyValue {
   // key is the key in bytes. An empty key is not allowed.
   bytes key = 1;
-  // create_revision is the revision of last creation on this key.
+  // create_revision is the revision that created the current incarnation of this key.
+  // Deleting and recreating a key assigns a new create_revision.
   int64 create_revision = 2;
-  // mod_revision is the revision of last modification on this key.
+  // mod_revision is the revision of the last modification to this key.
   int64 mod_revision = 3;
   // value is the value held by the key, in bytes.
   bytes value = 4;

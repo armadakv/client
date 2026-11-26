@@ -10,7 +10,7 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 export ARMADA_BLACKBOX=1
-export ARMADA_IMAGE="${ARMADA_IMAGE:-ghcr.io/armadakv/armada:master}"
+export ARMADA_IMAGE="${ARMADA_IMAGE:-ghcr.io/armadakv/armada:v0.3.2}"
 export ARMADA_IMAGE_PLATFORM="${ARMADA_IMAGE_PLATFORM:-linux/amd64}"
 
 (

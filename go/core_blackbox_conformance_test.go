@@ -17,7 +17,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-const defaultArmadaBlackboxImage = "ghcr.io/armadakv/armada:master"
+const defaultArmadaBlackboxImage = "ghcr.io/armadakv/armada:v0.3.2"
 const defaultArmadaBlackboxPlatform = "linux/amd64"
 
 type blackboxFixture struct {

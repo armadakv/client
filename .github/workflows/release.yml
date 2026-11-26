@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release version to validate
+        description: Release version to validate (dry run only, nothing is published)
         required: true
         type: string
 
@@ -20,7 +20,68 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
       - name: Validate release scaffold
         run: ./scripts/release-dry-run.sh "${VERSION}"
         env:
           VERSION: ${{ inputs.version || github.ref_name }}
+
+  go:
+    name: Tag and verify Go modules
+    if: github.event_name == 'push'
+    needs: dry-run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+      - name: Tag the Go modules on the release commit
+        run: ./scripts/tag-go-modules.sh --push "${GITHUB_REF_NAME}"
+      - name: Resolve every module through proxy.golang.org
+        run: ./scripts/verify-go-release.sh "${GITHUB_REF_NAME}"
+
+  java:
+    name: Publish Java to Maven Central
+    if: github.event_name == 'push'
+    needs: dry-run
+    runs-on: ubuntu-latest
+    environment: maven-central
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Check publishing secrets
+        run: |
+          for name in MAVEN_CENTRAL_USERNAME MAVEN_CENTRAL_PASSWORD SIGNING_KEY SIGNING_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then echo "missing secret ${name}" >&2; exit 1; fi
+          done
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      - name: Test
+        working-directory: java
+        run: ./gradlew test
+      - name: Publish and release
+        working-directory: java
+        run: ./gradlew publishAndReleaseToMavenCentral -Pversion="${GITHUB_REF_NAME#v}"
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}

@@ -1,25 +1,23 @@
+/*
+ * Copyright JAMF Software, LLC
+ */
+
 plugins {
     id("armada.library-conventions")
 }
 
-val grpcVersion = "1.66.0"
-val testContainersVersion = "2.0.5"
-val jupiterVersion = "5.10.3"
-val autoServiceVersion = "1.1.1"
-
-group = "io.armadakv"
-
-version = "1.4.1-SNAPSHOT"
+description = "JUnit Jupiter extension and Testcontainers support for testing against Armada KV."
 
 dependencies {
-    api("io.grpc:grpc-core:${grpcVersion}")
-    api("io.grpc:grpc-stub:${grpcVersion}")
-    api("io.grpc:grpc-inprocess:${grpcVersion}")
-    api("io.grpc:grpc-util:${grpcVersion}")
-    api("org.junit.jupiter:junit-jupiter-api:${jupiterVersion}")
-    api("org.testcontainers:testcontainers-junit-jupiter:$testContainersVersion")
+    api(libs.grpc.core)
+    api(libs.grpc.stub)
+    api(libs.grpc.inprocess)
+    api(libs.grpc.util)
+    api(platform(libs.junit.bom))
+    api(libs.junit.jupiter.api)
+    api(libs.testcontainers.junit.jupiter)
 
-    implementation("com.google.auto.service:auto-service-annotations:${autoServiceVersion}")
+    implementation(libs.auto.service.annotations)
 
-    annotationProcessor("com.google.auto.service:auto-service:${autoServiceVersion}")
+    annotationProcessor(libs.auto.service)
 }
