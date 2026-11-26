@@ -4,3 +4,26 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
+  - package-ecosystem: gomod
+    directories:
+      - /go
+      - /go/plugin/rotel
+      - /go/plugin/rprom
+      - /go/plugin/rzap
+      - /go/plugin/rlogrus
+    schedule:
+      interval: weekly
+    groups:
+      go:
+        patterns: ["*"]
+
+  - package-ecosystem: gradle
+    directories:
+      - /java
+      - /java/examples
+    schedule:
+      interval: weekly
+    groups:
+      java:
+        patterns: ["*"]
