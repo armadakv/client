@@ -4,7 +4,6 @@
 
 package io.armadakv.core.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.armadakv.core.Client;
 import io.armadakv.core.api.ByteSequence;
 import io.armadakv.core.api.TableInfo;
@@ -24,6 +23,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.testcontainers.DockerClientFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import javax.net.ssl.SSLException;
 import java.io.IOException;
@@ -269,7 +269,7 @@ class CoreBlackboxConformanceTest {
                 if (input == null) {
                     throw new IOException("missing blackbox-core.json fixture");
                 }
-                return new ObjectMapper().readValue(input, BlackboxFixture.class);
+                return JsonMapper.builder().build().readValue(input, BlackboxFixture.class);
             }
         }
     }

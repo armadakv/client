@@ -99,10 +99,6 @@ The plugin modules (`rotel`, `rprom`) require `github.com/armadakv/client/go v0.
 order: tag the core first, then bump the plugin `require` to the real version, drop the `replace` (use a local
 `go.work` for development), then tag the plugins.
 
-### Java
-- Jackson stays on 2.x: the Spring Data converter factories expose Jackson 2 mappers, so moving to
-  Jackson 3 (`tools.jackson`) is a separate, breaking change.
-
 ## Suggested first release
 
 `v0.1.0` of this repo (Go modules and Java alike), documenting the revision filters, with Armada `v0.3.2`

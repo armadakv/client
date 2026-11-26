@@ -11,7 +11,7 @@ javaxAnnotation = "1.3.2"
 springData = "4.2.0"
 spring = "7.1.0"
 springBoot = "4.2.0"
-jackson = "2.23.0"
+jackson = "3.3.0"
 junit = "6.1.3"
 assertj = "3.27.7"
 testcontainers = "2.0.5"
@@ -40,9 +40,9 @@ auto-service = { module = "com.google.auto.service:auto-service", version.ref = 
 auto-service-annotations = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 spring-data-keyvalue = { module = "org.springframework.data:spring-data-keyvalue", version.ref = "springData" }
 spring-context-support = { module = "org.springframework:spring-context-support", version.ref = "spring" }
-jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
-jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version.ref = "jackson" }
+jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-dataformat-xml = { module = "tools.jackson.dataformat:jackson-dataformat-xml", version.ref = "jackson" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api" }
 junit-jupiter-migrationsupport = { module = "org.junit.jupiter:junit-jupiter-migrationsupport" }

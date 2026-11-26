@@ -15,8 +15,6 @@ import armada.v1.RangeRequest;
 import armada.v1.RangeResponse;
 import armada.v1.ResponseHeader;
 import armada.v1.TxnRequest;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import io.armadakv.core.RetryConfig;
 import io.armadakv.core.api.ByteSequence;
@@ -46,6 +44,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import mvcc.v1.Mvcc;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -548,8 +548,9 @@ class CoreConformanceTest {
                 if (input == null) {
                     throw new IOException("missing core-sdk.json conformance fixture");
                 }
-                return new ObjectMapper()
+                return JsonMapper.builder()
                         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                        .build()
                         .readValue(input, CoreConformanceFixture.class);
             }
         }

@@ -16,4 +16,6 @@ dependencies {
     implementation(libs.jackson.core)
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.xml)
+
+    testImplementation(libs.assertj.core)
 }
